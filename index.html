@@ -293,8 +293,9 @@ function acts(p){
   return p.dues>0?`<span class="badge">Payment baaki</span>`:`<button class="b" onclick="event.stopPropagation();arch('${p.id}',true)">Client history me bhejo</button>`}
 function ucard(p){const m=meta(p),n=m.ud?dif(m.ud,today()):null;
   return `<div class="wc"><div>${nm(p)}</div><div>${tm(p)}${esc(p.service)}</div>
-  <div class="mut">Start date: <b>${fd(m.ud)}</b> ${n==null?'':`<span class="chip ${n<0?'bad':n<=2?'warn':''}">${n<0?-n+' din late':n?n+' din me':'Aaj'}</span>`}</div>
-  <div><button class="b" onclick="wf('run','${p.id}')">Running me switch karo</button><button class="b o" onclick="wf('up','${p.id}')">Edit</button><button class="b r" onclick="delWork('${p.id}')">Delete</button></div></div>`}
+  ${m.rq?`<div class="pre" style="font-size:13px">${esc(m.rq)}</div>`:''}<div class="mut">Start date: <b>${fd(m.ud)}</b> ${n==null?'':`<span class="chip ${n<0?'bad':n<=2?'warn':''}">${n<0?-n+' din late':n?n+' din me':'Aaj'}</span>`}</div>
+  <div><button class="b" onclick="wf('run','${p.id}')">Running me switch karo</button><button class="b o" onclick="upMail('${p.id}')">Mail</button><button class="b o" onclick="wf('up','${p.id}')">Edit</button><button class="b r" onclick="delWork('${p.id}')">Delete</button></div></div>`}
+function upMail(id){const p=pr(id),m=meta(p);compose({clientId:p.clientId,projectId:id,purpose:'upcoming',work:p.service+' — upcoming',details:[m.rq,m.ud?'Start date: '+fd(m.ud):''].filter(Boolean).join('\n')})}
 function wcard(p){
   return `<div class="wc" onclick="openD('${p.id}')"><div>${nm(p)}</div><div>${tm(p)}${esc(p.service)} ${chip(p)}${p.pending?` <span class="badge">${p.pending} request</span>`:''}</div>
   <div class="nums"><span>Days<b>${p.days||'-'}</b></span><span>Total<b>${money(p.total)}</b></span><span>Paid<b>${money(p.paid)}</b></span><span>Dues<b class="${p.dues>0?'du':''}">${money(p.dues)}</b></span><span>Agla<b>${p.dues>0?'Phase '+(phn(p)+1):(phn(p)?'✓ Done':'-')}</b></span></div><div>${acts(p)}</div></div>`}
@@ -316,11 +317,11 @@ let W={};
 function wf(mode,id,cid){
   const p=id?pr(id):null,m=p?meta(p):{},c=p?cl(p.clientId):cid?cl(cid):null,up=mode==='up';
   W={mode,id:id||''};
-  modal(mh(up?(p?'Upcoming client edit':'Upcoming client'):(p?'Running me shuru karo':'Naya kaam'),up?'Naam, phone, email, service aur start date':'Client, service, timeline aur payment')+`<div class="mbody">
+  modal(mh(up?(p?'Upcoming client edit':'Upcoming client'):(p?'Running me shuru karo':'Naya kaam'),up?'Naam, phone, email, service, start date aur requirement':'Client, service, timeline aur payment')+`<div class="mbody">
   <div class="sec">Client</div><div class="fg"><div class="full"><label>Client</label><select id="wc" ${p?'disabled':''} onchange="wsel()"><option value="">+ Naya client</option>${S.clients.map(x=>`<option value="${x.id}" ${c&&x.id===c.id?'selected':''}>${esc(x.name)} (${esc(x.phone)})</option>`).join('')}</select></div>
   <div><label>Naam</label><input id="cn"></div><div><label>Phone</label><input id="cp" inputmode="tel"></div><div class="full"><label>Email (zaroori)</label><input id="ce" type="email"></div></div>
   <div class="sec">Service</div><div class="fg"><div><label>Service</label><select id="sv">${SERVICES.map(s=>`<option ${p&&p.service===s?'selected':''}>${s}</option>`).join('')}</select></div>
-  ${up?`<div><label>Start date</label><input id="ud" type="date" value="${m.ud||''}"></div>`:`<div><label>Start date</label><input id="sd" type="date" value="${m.s||today()}" oninput="wcalc()"></div>
+  ${up?`<div><label>Start date</label><input id="ud" type="date" value="${m.ud||''}"></div><div class="full"><label>Client ki requirement / description (AI mail isi se banayega)</label><textarea id="rq" placeholder="Client ko kya chahiye? Jaise: attendance form, 3 pages, logo lagana hai…">${esc(m.rq||'')}</textarea></div>`:`<div><label>Start date</label><input id="sd" type="date" value="${m.s||today()}" oninput="wcalc()"></div>
   <div><label>Days</label><input id="dy" type="number" min="0" value="${p&&p.days||''}" oninput="wcalc()"></div><div><label>Total amount (₹)</label><input id="tt" type="number" min="0" value="${p&&p.total||''}" oninput="wcalc()"></div>
   <div><label>Advance / paid (₹)</label><input id="ad" type="number" min="0" oninput="wcalc()"></div><div><label>Dues (₹)</label><input id="du" readonly></div>
   <div class="full"><label>Payment kitne phase me lena hai</label><select id="ph" onchange="wcalc()">${phOpts(+m.ph||1)}</select></div><div class="full pv" id="pv"></div>
@@ -334,7 +335,7 @@ function wfSave(){
   const up=W.mode==='up',v=$('#wc').value,id=W.id,p=id?pr(id):null,c={name:$('#cn').value.trim(),phone:$('#cp').value.trim(),email:$('#ce').value.trim()};
   if(!c.name||!c.email)return toast('Client ka naam aur email zaroori hai');
   const m=p?meta(p):{};let txt,j;
-  if(up){m.ud=$('#ud').value;txt=p?ntx(p):'';j={status:'Upcoming',days:p?p.days:'',total:p?p.total:'',paid:''}}
+  if(up){m.ud=$('#ud').value;m.rq=$('#rq').value.trim();txt=p?ntx(p):'';j={status:'Upcoming',days:p?p.days:'',total:p?p.total:'',paid:''}}
   else{m.s=$('#sd').value||today();m.ph=+$('#ph').value||1;txt=$('#nt').value;j={status:'Running',days:$('#dy').value,total:$('#tt').value,paid:$('#ad').value};
     m.pd=+j.paid>0?1:(p&&+p.paid>0?(m.pd||1):0)}
   j.service=$('#sv').value;j.note=mk(txt,m);
@@ -345,7 +346,7 @@ function wfSave(){
     if(!up&&+j.paid>0&&!(+p.paid>0))enq({t:'pay+',id:tid(),projectId:id,payment:{amount:j.paid,paidAt:new Date().toISOString(),mode:'Cash',note:'Phase 1 · Advance'}})}
   closeM();toast(up?'Upcoming save ho gaya':'Kaam save ho gaya');
   if(!up&&confirm('"Kaam start" mail bhejna hai?'))compose({clientId:cidN,projectId:pidN,purpose:'started',work:j.service})
-  else if(up&&confirm('Upcoming kaam ki mail bhejni hai?'))compose({clientId:cidN,projectId:pidN,purpose:'upcoming',work:j.service+' — upcoming',details:m.ud?'Start date: '+fd(m.ud):''})}
+  else if(up&&confirm('Upcoming kaam ki mail bhejni hai?'))compose({clientId:cidN,projectId:pidN,purpose:'upcoming',work:j.service+' — upcoming',details:[m.rq,m.ud?'Start date: '+fd(m.ud):''].filter(Boolean).join('\n')})}
 
 /* ---- Project window: 3 tab (Details / Payment history / Requests), neeche Save-Edit-Delete ---- */
 let DS={id:'',tab:'d',edit:false};
@@ -480,20 +481,27 @@ function review(){keep();const c=cl(C.clientId),d=C.drafts[C.sel];
   <div class="bar"><button class="b" id="sb" onclick="doSend()">Haan, bhejo</button><button class="b o" onclick="cView()">Wapas edit karo</button></div>`)}
 async function doSend(){const d=C.drafts[C.sel];$('#sb').disabled=true;if(!await ready()){$('#sb').disabled=false;return}
   const r=await run(()=>api('sendMail',{clientId:C.clientId,projectId:C.projectId,purpose:srvP(),work:C.work,subject:d.subject,body:d.body,updateId:C.updateId}),'Mail bhej di');
-  if(r){mlogAdd(d);closeM();if(tab==='mail')draw()}else review()}
+  if(r){closeM();if(tab==='mail')vMail()}else review()}
 
-/* ---- Quick Mail history (is device me save hoti hai; jis jis ko mail bheji sab yahan dikhegi) ---- */
-const mlog=()=>{try{return JSON.parse(localStorage.cml||'[]')}catch{return[]}};
-function mlogAdd(d){const c=cl(C.clientId),l=mlog();
-  l.unshift({id:tid(),clientId:C.clientId,name:c.name,email:c.email,cat:CATOF[C.purpose]||'man',work:C.work,subject:d.subject,body:d.body,sentAt:new Date().toISOString()});
-  try{localStorage.cml=JSON.stringify(l.slice(0,500))}catch{}}
+/* ---- Quick Mail history: server ki EmailLog se aati hai, isliye har device par same dikhti hai ---- */
+let ML=null;
+const mlCache=()=>{try{return JSON.parse(localStorage.cmls||'[]')}catch{return[]}};
+async function mFetch(){
+  const st=$('#mst');if(!PW)return;
+  if(!navigator.onLine){if(st)st.textContent='📴 Offline — pichhli saved list dikh rahi hai';return}
+  if(st)st.textContent='Server se load ho raha hai…';
+  try{const r=await api('getLog',{});ML=r.log||[];try{localStorage.cmls=JSON.stringify(ML)}catch{}
+    if(tab==='mail'){const s2=$('#mst');if(s2)s2.textContent='';mList()}}
+  catch(e){if(e.message==='Password galat hai'){lockNow(true);return}const s2=$('#mst');if(s2)s2.textContent='Server se nahi aa paya ('+e.message+') — pichhli saved list dikh rahi hai'}}
 function vMail(){
+  if(!ML)ML=mlCache();
   $('#v').innerHTML=`<div class="bar"><button class="b" onclick="compose({})">+ Mail likho</button></div>
   <div class="bar"><select id="mfl" onchange="mf=this.value;mList()"><option value="all">Filter: Saari mails</option>${CATS.map(([k,l])=>`<option value="${k}" ${mf===k?'selected':''}>${l}</option>`).join('')}</select>
-  <input id="mqs" placeholder="Naam ya subject search karo" value="${esc(mq)}" oninput="mq=this.value;mList()"></div><div id="ml"></div>`;mList()}
+  <input id="mqs" placeholder="Naam ya subject search karo" value="${esc(mq)}" oninput="mq=this.value;mList()"></div><p class="mut" id="mst"></p><div id="ml"></div>`;mList();mFetch()}
 function mList(){
-  const s=mq.toLowerCase(),all=mlog(),L=all.filter(m=>(mf==='all'||m.cat===mf)&&(!s||(m.name+' '+m.email+' '+m.subject).toLowerCase().includes(s))),lb=Object.fromEntries(CATS);
-  $('#ml').innerHTML=`<p class="mut">${L.length} mail${mf!=='all'?' — '+lb[mf]:''}</p>`+(L.map(m=>`<div class="card"><div class="row" style="border:0;padding:0"><div><b>${esc(m.name)}</b><small>${esc(m.email)}</small></div><span class="chip">${lb[m.cat]||'Manual mail'}</span></div>
+  const s=mq.toLowerCase(),lb=Object.fromEntries(CATS),all=ML||[];
+  const L=all.filter(m=>{const c=CATOF[m.purpose]||'man';return(mf==='all'||c===mf)&&(!s||((m.clientName||'')+' '+(m.to||'')+' '+(m.subject||'')).toLowerCase().includes(s))});
+  $('#ml').innerHTML=`<p class="mut">${L.length} mail${mf!=='all'?' — '+lb[mf]:''}</p>`+(L.map(m=>`<div class="card"><div class="row" style="border:0;padding:0"><div><b>${esc(m.clientName)}</b><small>${esc(m.to)}</small></div><span class="chip">${lb[CATOF[m.purpose]||'man']}</span></div>
   <div style="margin-top:6px"><b>${esc(m.subject)}</b><small>${fdt(m.sentAt)}</small></div><details><summary>Dekho</summary><div class="pre">${esc(m.body)}</div></details></div>`).join('')||'<p class="mut">Abhi koi mail nahi. Mail bhejoge to yahan apne aap aa jayegi.</p>')}
 
 /* ---- History ---- */
