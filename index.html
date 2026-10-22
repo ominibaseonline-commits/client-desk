@@ -99,6 +99,17 @@ input[readonly]{background:var(--bg);color:var(--mut)}
   .bar .b{flex:1 1 auto}
   .kv{grid-template-columns:1fr 1fr}
 }
+
+/* --- Campaign (WhatsApp) --- */
+.cf{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.cf button{border:1px solid var(--line);background:none;color:var(--ink);border-radius:99px;padding:7px 14px;font:inherit;font-weight:600;cursor:pointer}
+.cf button.on{border-color:var(--ac);background:var(--ac);color:var(--bg)}
+.cf button small{display:inline;margin-left:4px;color:inherit;opacity:.8}
+.cr{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:6px 0}
+.cr.sent{opacity:.55}
+.cr .ci{flex:1;min-width:0}.cr .ci b{display:block}.cr .ci span{display:block;color:var(--mut);font-size:13px;overflow-wrap:anywhere}
+button.wa{background:#25d366;border-color:#25d366;color:#fff;white-space:nowrap;margin:0}
+@media(max-width:520px){.cr{flex-wrap:wrap}.cr .ci{flex-basis:100%}button.wa{width:100%}}
 </style>
 </head>
 <body>
@@ -268,8 +279,8 @@ function modal(h){$('#m').innerHTML=h.startsWith('<div class="mh">')?h:'<div cla
 function closeM(){curD='';$('#mb').style.display='none'}
 $('#mb').onclick=e=>{if(e.target.id==='mb')closeM()};
 function nav(){const uc=S.projects.filter(p=>!p.archived&&p.status==='Upcoming').length;
-  $('#nav').innerHTML=[['work','Client Work'],['upc','Upcoming'+(uc?' ('+uc+')':'')],['cli','Clients'],['hist','History'],['mail','Quick Mail'],['set','Settings']].map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';draw()">${l}</button>`).join('')}
-function draw(){if(!PW)return;nav();({work:vWork,upc:vUp,cli:vCli,hist:vHist,mail:vMail,set:vSet})[tab]()}
+  $('#nav').innerHTML=[['work','Client Work'],['upc','Upcoming'+(uc?' ('+uc+')':'')],['cli','Clients'],['hist','History'],['mail','Quick Mail'],['camp','Campaign'],['set','Settings']].map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';draw()">${l}</button>`).join('')}
+function draw(){if(!PW)return;nav();({work:vWork,upc:vUp,cli:vCli,hist:vHist,mail:vMail,camp:vCamp,set:vSet})[tab]()}
 
 /* ---- Dates + extra fields ----
    Start date / upcoming date / kitne phase paid (pd) ke liye Sheet me alag column nahi hai, isliye ye note ke end me chhote tag (⟦cd:{...}⟧) me save hote hain
@@ -580,6 +591,44 @@ async function cHist(id){if(isT(id))return toast('Abhi sync ho raha hai, 2-3 sec
 
 /* ---- Settings ---- */
 function vSet(){$('#v').innerHTML=`<h2>Settings</h2><div class="card"><p class="mut" style="margin-top:0">Har AI mail ke end me "Ominibase Team" apne aap lagta hai.</p><div class="bar"><button class="b o" onclick="flush().then(()=>sync(true)).then(()=>toast(Q.length?Q.length+' change abhi baaki hain':'Sab sync hai'))">Abhi sync karo</button><button class="b o" onclick="lockNow()">App lock karo</button></div><p class="mut">Password badalna ho to Apps Script ke Script Properties me APP_PASSWORD badlo.</p></div>`}
+
+
+/* ---- Campaign: service wise client list + WhatsApp ---- */
+let CM={msg:'',svc:'all'},CS={};try{CS=JSON.parse(localStorage.cmcs||'{}')}catch{}
+const waNum=p=>{let v=String(p||'').replace(/\D/g,'');if(v.length===10)v='91'+v;return v.length>=11?v:''};
+function campRows(){
+  // service filter: us service ke har client ki ek row; All: har client ki ek row (saari services ke saath)
+  const R=[];
+  S.clients.forEach(c=>{
+    const ps=S.projects.filter(p=>p.clientId===c.id);
+    if(CM.svc==='all'){R.push({c,svc:[...new Set(ps.map(p=>p.service))].join(', ')})}
+    else if(ps.some(p=>p.service===CM.svc)){R.push({c,svc:CM.svc})}
+  });
+  return R.sort((a,b)=>a.c.name.localeCompare(b.c.name));
+}
+const waLink=(c,svc)=>{const t=CM.msg.trim().replace(/\{name\}/gi,c.name).replace(/\{service\}/gi,svc||'').replace(/\{business\}/gi,c.company||'');
+  return 'https://wa.me/'+waNum(c.phone)+(t?'?text='+encodeURIComponent(t):'')};
+function vCamp(){
+  const cnt=sv=>sv==='all'?S.clients.length:S.clients.filter(c=>S.projects.some(p=>p.clientId===c.id&&p.service===sv)).length;
+  $('#v').innerHTML=`<h2>Campaign</h2>
+  <div class="card"><label style="margin-top:0">Offer / message (jo WhatsApp par bhejna hai)</label>
+  <textarea id="cmsg" placeholder="Jaise: Namaste {name} ji, is mahine {service} par 20% off hai!" oninput="CM.msg=this.value;cRows()">${esc(CM.msg)}</textarea>
+  <small>Tip: <b>{name}</b>, <b>{service}</b>, <b>{business}</b> likhoge to har client ke liye apne aap unka naam/service/business aa jayega.</small></div>
+  <div class="cf" id="cfl">${[['all','All']].concat(SERVICES.map(x=>[x,x])).map(([k,l])=>`<button class="${CM.svc===k?'on':''}" onclick="CM.svc=this.dataset.k;vCamp()" data-k="${esc(k)}">${esc(l)}<small>${cnt(k)}</small></button>`).join('')}</div>
+  <div id="crw"></div>`;cRows()}
+function cRows(){
+  const L=campRows(),box=$('#crw');if(!box)return;
+  const todo=L.filter(r=>waNum(r.c.phone)&&!CS[r.c.id]).length;
+  box.innerHTML=`<div class="bar" style="align-items:center"><span class="mut" style="flex:1">${L.length} client${CM.svc!=='all'?' — '+esc(CM.svc):''} · ${todo} ko bhejna baaki</span>
+  <button class="b" ${todo?'':'disabled'} onclick="campNext()">Agla client ko bhejo ▶</button><button class="b o" onclick="campReset()">Sent reset</button></div>`+
+  (L.map(({c,svc})=>{const ok=!!waNum(c.phone);return `<div class="cr ${CS[c.id]?'sent':''}"><div class="ci"><b>${esc(c.name)} ${CS[c.id]?'<span class="chip" style="display:inline">✓ bheja</span>':''}</b>
+  <span>📞 ${esc(c.phone)||'Phone nahi hai'}</span><span>🏢 ${esc(c.company)||'—'}</span><span>🛠 ${esc(svc)||'Koi service nahi'}</span></div>
+  ${ok?`<button class="b wa" onclick="campSend('${c.id}','${esc(svc).replace(/'/g,"\\'")}')">💬 WhatsApp</button>`:'<span class="chip warn">Number galat</span>'}</div>`}).join('')||'<p class="mut">Is service ka koi client nahi mila</p>')}
+function campSend(id,svc){const c=cl(id);if(!CM.msg.trim()&&!confirm('Message khali hai. Sirf chat khole?'))return;
+  CS[id]=1;localStorage.cmcs=JSON.stringify(CS);window.open(waLink(c,svc),'_blank');cRows()}
+function campNext(){const r=campRows().find(r=>waNum(r.c.phone)&&!CS[r.c.id]);if(!r)return toast('Sab ko bhej diya');
+  if(!CM.msg.trim())return toast('Pehle upar message likho');campSend(r.c.id,r.svc)}
+function campReset(){if(!confirm('Sent ka nishaan sab se hata dein?'))return;CS={};localStorage.cmcs='{}';cRows()}
 
 /* ---- PWA ---- */
 let ip;addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#inst').style.display='inline-block'});
