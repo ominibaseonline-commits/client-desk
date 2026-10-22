@@ -120,6 +120,9 @@ const STAGES=['Upcoming','Running','Completed'];
 const CATS=[['pay','Payment history'],['new','Naya client'],['up','Upcoming work'],['done','Completed work'],['req','Request / Update / Change'],['man','Manual mail']];
 const CATOF={payment:'pay',payment_received:'pay',started:'new',upcoming:'up',final_summary:'done',work_completed:'done',update_received:'req',update_completed:'req',general:'man'};
 const $=s=>document.querySelector(s);
+const dig=e=>{let v=e.value.replace(/\D/g,'');if(v.length>=12&&v.startsWith('91'))v=v.slice(2);if(v.length>10&&v.startsWith('0'))v=v.slice(1);e.value=v.slice(0,10)};
+const PHONE_OK=v=>/^\d{10}$/.test(v);
+const PH_MSG='Phone number sirf 10 digit ka hona chahiye';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const cfg=()=>{try{return JSON.parse(localStorage.cm||'{}')}catch{return{}}};
 const money=n=>'₹'+Number(n||0).toLocaleString('en-IN');
@@ -319,7 +322,7 @@ function wf(mode,id,cid){
   W={mode,id:id||''};
   modal(mh(up?(p?'Upcoming client edit':'Upcoming client'):(p?'Running me shuru karo':'Naya kaam'),up?'Naam, phone, email, service, start date aur requirement':'Client, service, timeline aur payment')+`<div class="mbody">
   <div class="sec">Client</div><div class="fg"><div class="full"><label>Client</label><select id="wc" ${p?'disabled':''} onchange="wsel()"><option value="">+ Naya client</option>${S.clients.map(x=>`<option value="${x.id}" ${c&&x.id===c.id?'selected':''}>${esc(x.name)} (${esc(x.phone)})</option>`).join('')}</select></div>
-  <div><label>Naam</label><input id="cn"></div><div><label>Phone</label><input id="cp" inputmode="tel"></div><div class="full"><label>Email (zaroori)</label><input id="ce" type="email"></div></div>
+  <div><label>Naam</label><input id="cn"></div><div><label>Phone</label><input id="cp" type="tel" inputmode="numeric" autocomplete="off" placeholder="10 digit mobile no." oninput="dig(this)"></div><div class="full"><label>Email (zaroori)</label><input id="ce" type="email"></div></div>
   <div class="sec">Service</div><div class="fg"><div><label>Service</label><select id="sv">${SERVICES.map(s=>`<option ${p&&p.service===s?'selected':''}>${s}</option>`).join('')}</select></div>
   ${up?`<div><label>Start date</label><input id="ud" type="date" value="${m.ud||''}"></div><div class="full"><label>Client ki requirement / description (AI mail isi se banayega)</label><textarea id="rq" placeholder="Client ko kya chahiye? Jaise: attendance form, 3 pages, logo lagana hai…">${esc(m.rq||'')}</textarea></div>`:`<div><label>Start date</label><input id="sd" type="date" value="${m.s||today()}" oninput="wcalc()"></div>
   <div><label>Days</label><input id="dy" type="number" min="0" value="${p&&p.days||''}" oninput="wcalc()"></div><div><label>Total amount (₹)</label><input id="tt" type="number" min="0" value="${p&&p.total||''}" oninput="wcalc()"></div>
@@ -334,6 +337,7 @@ function wcalc(){if(!$('#tt'))return;const t=+$('#tt').value||0,a=+$('#ad').valu
 function wfSave(){
   const up=W.mode==='up',v=$('#wc').value,id=W.id,p=id?pr(id):null,c={name:$('#cn').value.trim(),phone:$('#cp').value.trim(),email:$('#ce').value.trim()};
   if(!c.name||!c.email)return toast('Client ka naam aur email zaroori hai');
+  if(!$('#cp').readOnly&&c.phone&&!PHONE_OK(c.phone))return toast(PH_MSG);
   const m=p?meta(p):{};let txt,j;
   if(up){m.ud=$('#ud').value;m.rq=$('#rq').value.trim();txt=p?ntx(p):'';j={status:'Upcoming',days:p?p.days:'',total:p?p.total:'',paid:''}}
   else{m.s=$('#sd').value||today();m.ph=+$('#ph').value||1;txt=$('#nt').value;j={status:'Running',days:$('#dy').value,total:$('#tt').value,paid:$('#ad').value};
@@ -361,19 +365,27 @@ function dRender(){
 function mRefresh(){const a=document.activeElement;if(curD&&$('#dbody')&&!DS.edit&&!(a&&$('#m').contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)))dRender()}
 function dTab(p){
   const m=meta(p),l=left(p),E=DS.edit,sv=S.projects.filter(x=>x.clientId===p.clientId);
-  const body=E?`<div class="fg"><div><label>Naam</label><input id="e-n" value="${esc(p.clientName)}"></div><div><label>Phone</label><input id="e-p" value="${esc(p.phone)}"></div><div class="full"><label>Email</label><input id="e-e" value="${esc(p.email)}"></div>
+  const body=E?`<div class="fg"><div><label>Naam</label><input id="e-n" value="${esc(p.clientName)}"></div><div><label>Phone</label><input id="e-p" type="tel" inputmode="numeric" autocomplete="off" oninput="dig(this)" value="${esc(p.phone)}"></div><div class="full"><label>Email</label><input id="e-e" value="${esc(p.email)}"></div>
   <div><label>Stage</label><select id="e-s">${STAGES.map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}</select></div><div><label>Service</label><select id="e-v">${SERVICES.map(s=>`<option ${s===p.service?'selected':''}>${s}</option>`).join('')}</select></div>
   <div><label>Start date</label><input id="e-d" type="date" value="${m.s||''}"></div><div><label>Days</label><input id="e-y" type="number" min="0" value="${p.days||''}"></div>
-  <div><label>Total (₹)</label><input id="e-t" type="number" min="0" value="${p.total||''}"></div><div><label>Payment kitne phase me</label><select id="e-h">${phOpts(+m.ph||1)}</select></div>
-  <div class="full"><label>Internal note</label><textarea id="e-o">${esc(ntx(p))}</textarea></div></div><p class="mut">Paid / Dues payments se banta hai — Payment history tab me badlo.</p>`
+  <div><label>Total amount (₹)</label><input id="e-t" type="number" min="0" value="${p.total||''}" oninput="ecalc()"></div><div><label>Advance / paid (₹)</label><input id="e-a" type="number" min="0" value="${p.paid||''}" oninput="ecalc()"></div><div><label>Dues (₹)</label><input id="e-du" readonly value="${p.dues||0}"></div><div><label>Payment kitne phase me</label><select id="e-h">${phOpts(+m.ph||1)}</select></div>
+  <div class="full"><label>Internal note</label><textarea id="e-o">${esc(ntx(p))}</textarea></div></div><p class="mut">Paid badhane par nayi payment (Cash) apne aap ban jati hai. Paid kam karna ho ya mode/date badalni ho to Payment history tab me jao.</p>`
   :`<div class="kv"><div><span>Stage</span><b>${p.status}</b></div><div><span>Service</span><b>${esc(p.service)}</b></div><div><span>Start date</span><b>${fd(m.s)}</b></div><div><span>Days / Deadline</span><b>${p.days||'-'}${l?' · '+fd(l.due):''}</b></div><div><span>Total</span><b>${money(p.total)}</b></div><div><span>Paid</span><b>${money(p.paid)}</b></div><div><span>Dues</span><b class="${p.dues>0?'du':''}">${money(p.dues)}</b></div><div><span>Kitne phase me</span><b>${m.ph?m.ph+' baar':'-'}</b></div><div><span>Payment</span><b>${phTxt(p)}</b></div></div>${ntx(p)?`<div class="sec">Note</div><div class="pre">${esc(ntx(p))}</div>`:''}`;
   return body+`<div class="sec">Is client ki services (${sv.length})</div>`+sv.map(x=>`<div class="row"><div>${esc(x.service)} <span class="chip">${x.status}</span> <span class="mut">${money(x.total)}</span>${x.id===p.id?' <span class="chip">yahi</span>':''}</div><div><button class="b o" onclick="svEdit('${x.id}')">Edit</button><button class="b r" onclick="delWork('${x.id}')">Delete</button></div></div>`).join('')+`<div class="bar"><button class="b o" onclick="wf('run',null,'${p.clientId}')">+ Nayi service add karo</button></div>`}
 /* Payment tab: koi auto plan nahi — bas total / mila / dues aur agla phase. Naya payment me phase khud chuno */
+function phLabels(p,x){
+  const adv=y=>/advance/i.test(y.note||'');
+  const L=x.slice().sort((a,b)=>(adv(a)?0:1)-(adv(b)?0:1)||new Date(a.paidAt)-new Date(b.paidAt)),o={};let last=0;
+  L.forEach((y,i)=>{const t=/phase\s*(\d+)/i.exec(y.note||''),a=adv(y),n=t?+t[1]:(a&&!last?1:last+1);last=n;
+    const fin=/\(final\)/i.test(y.note||'')||(i===L.length-1&&+p.dues<=0);
+    o[y.id]={n,fin,txt:'Phase '+n+(a&&n===1?' · Advance':'')+(fin?' · Final':'')}});
+  return{o,L}}
+const cleanNote=s=>String(s||'').replace(/Phase\s*\d+(\s*\(Final\))?/gi,'').replace(/Advance(\s*\/\s*shuru me jama)?/gi,'').replace(/\s*·\s*(?=·|$)/g,'').replace(/^[\s·]+|[\s·]+$/g,'').replace(/\s{2,}/g,' ');
 function dPay(p){
-  const x=S.pay[p.id],E=DS.edit,n=phn(p),nx=Math.min(6,n+1);
-  const head=`<div class="kv"><div><span>Total</span>${E?`<input id="p-t" type="number" min="0" value="${p.total||''}">`:`<b>${money(p.total)}</b>`}</div><div><span>Ab tak mila</span><b>${money(p.paid)}</b></div><div><span>Abhi dues</span><b class="${p.dues>0?'du':''}">${money(p.dues)}</b></div><div><span>Status</span><b>${phTxt(p)}</b></div></div>`;
-  const list=`<div class="sec">Payment history</div>`+(x?(x.map((y,i)=>E?`<div class="card"><div class="fg"><div><label>Amount</label><input id="pa${i}" type="number" min="1" value="${y.amount}"></div><div><label>Date & time</label><input id="pd${i}" type="datetime-local" value="${loc(y.paidAt)}"></div><div><label>Mode</label><select id="pm${i}">${MODES.map(o=>`<option ${o===y.mode?'selected':''}>${o}</option>`).join('')}</select></div><div><label>Note</label><input id="pn${i}" value="${esc(y.note)}"></div></div><button class="b r" onclick="delPay('${y.id}','${p.id}')">Delete</button></div>`
-    :`<div class="row"><div>${isT(y.id)?'⏳ ':''}<b>${money(y.amount)}</b> · ${esc(y.mode||'-')}<small>${fdt(y.paidAt)}${y.note?' · '+esc(y.note):''}</small></div></div>`).join('')||'<p class="mut">Abhi koi payment nahi</p>')+(SV.pay[p.id]?'':`<p class="mut">${navigator.onLine?'Purani list load ho rahi hai…':'Offline — purani list internet aane par dikhegi'}</p>`):`<p class="mut">${navigator.onLine?'Load ho raha hai…':'Offline — list abhi saved nahi hai'}</p>`);
+  const x=S.pay[p.id],E=DS.edit,n=phn(p),nx=Math.min(6,n+1),PL=x?phLabels(p,x):{o:{},L:[]};
+  const head=`<div class="kv"><div><span>Total</span>${E?`<input id="p-t" type="number" min="0" value="${p.total||''}">`:`<b>${money(p.total)}</b>`}</div><div><span>Ab tak mila</span><b>${money(p.paid)}</b></div><div><span>Abhi dues</span><b class="${p.dues>0?'du':''}">${money(p.dues)}</b></div><div><span>Status</span><b>${phTxt(p)}</b>${n>0&&p.dues>0?`<small>${n} phase ka payment mila</small>`:''}</div></div>`;
+  const list=`<div class="sec">Payment history</div>`+(x?((E?x:PL.L).map((y,i)=>E?`<div class="card"><div class="fg"><div><label>Amount</label><input id="pa${i}" type="number" min="1" value="${y.amount}"></div><div><label>Date & time</label><input id="pd${i}" type="datetime-local" value="${loc(y.paidAt)}"></div><div><label>Mode</label><select id="pm${i}">${MODES.map(o=>`<option ${o===y.mode?'selected':''}>${o}</option>`).join('')}</select></div><div><label>Note</label><input id="pn${i}" value="${esc(y.note)}"></div></div><button class="b r" onclick="delPay('${y.id}','${p.id}')">Delete</button></div>`
+    :`<div class="row"><div>${isT(y.id)?'⏳ ':''}<span class="chip ${PL.o[y.id]&&PL.o[y.id].fin?'':'warn'}">${esc(PL.o[y.id]?PL.o[y.id].txt:'')}</span> <b>${money(y.amount)}</b> · ${esc(y.mode||'-')}<small>${fdt(y.paidAt)}${cleanNote(y.note)?' · '+esc(cleanNote(y.note)):''}</small></div></div>`).join('')||'<p class="mut">Abhi koi payment nahi</p>')+(SV.pay[p.id]?'':`<p class="mut">${navigator.onLine?'Purani list load ho rahi hai…':'Offline — purani list internet aane par dikhegi'}</p>`):`<p class="mut">${navigator.onLine?'Load ho raha hai…':'Offline — list abhi saved nahi hai'}</p>`);
   return head+list+`<div class="sec">Naya payment</div><div class="fg"><div><label>Kaun sa phase</label><select id="pph">${[1,2,3,4,5,6].map(k=>`<option value="${k}" ${k===nx?'selected':''}>Phase ${k}</option>`).join('')}</select></div><div><label>Amount</label><input id="pa" type="number" min="1"></div>
   <div class="full"><label class="chk"><input type="checkbox" id="pfin" onchange="$('#pa').value=this.checked?pr('${p.id}').dues:''" ${p.dues>0?'':'disabled'}> Final payment — pura baaki dues (${money(p.dues)}) ek saath</label></div>
   <div><label>Date & time</label><input id="pd" type="datetime-local" value="${nowLocal()}"></div><div><label>Mode</label><select id="pm">${MODES.map(o=>`<option>${o}</option>`).join('')}</select></div><div class="full"><label>Note</label><input id="pn"></div></div><div class="bar"><button class="b" onclick="addPay('${p.id}')">+ Payment add karo</button></div>`}
@@ -383,13 +395,20 @@ function dReq(p){
     :`<div class="row"><div>${isT(r.id)?'⏳ ':''}<b>${esc(r.type)}</b> <span class="badge ${r.status==='Completed'?'g':''}">${r.status}</span><div>${esc(r.description)}</div><small>${r.days?r.days+' din':''}</small></div>${r.status!=='Completed'?`<button class="b" onclick="doneUp('${r.id}','${p.id}')">Complete + mail</button>`:''}</div>`).join('')||'<p class="mut">Koi request nahi</p>'):`<p class="mut">${navigator.onLine?'Load ho raha hai…':'Offline — list abhi saved nahi hai'}</p>`;
   return `<div class="sec">Saari requests</div>`+list+`<div class="sec">Nayi request</div><div class="fg"><div><label>Type</label><select id="ut">${TY.map(t=>`<option>${t}</option>`).join('')}</select></div><div><label>Days (optional)</label><input id="ud2" type="number" min="0"></div><div class="full"><label>Detail</label><input id="un"></div></div><div class="bar"><button class="b" onclick="addUp('${p.id}')">+ Request add karo</button></div>`}
 function nowLocal(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
+function ecalc(){const t=+$('#e-t').value||0,a=+$('#e-a').value||0;$('#e-du').value=Math.max(0,t-a)}
 function dSave(){
   const p=pr(DS.id);if(!p)return;
   if(DS.tab==='d'){
     const m=Object.assign(meta(p),{s:$('#e-d').value,ph:+$('#e-h').value||1}),k=cl(p.clientId),n={name:$('#e-n').value.trim(),phone:$('#e-p').value.trim(),email:$('#e-e').value.trim()};
     if(!n.name)return toast('Naam likho');
+    if(n.phone&&n.phone!==k.phone&&!PHONE_OK(n.phone))return toast(PH_MSG);
+    const np=+$('#e-a').value||0,nt=+$('#e-t').value||0,dp=np-(+p.paid||0);
+    if(np>nt)return toast('Paid amount total se zyada nahi ho sakta');
+    if(dp<0)return toast('Paid kam karna ho to Payment history tab me payment delete/edit karo');
+    if(dp>0)m.pd=phn(p)+1;
     if(n.name!==k.name||n.phone!==k.phone||n.email!==k.email)enq({t:'cli~',client:Object.assign({id:p.clientId,company:k.company||''},n)});
-    enq({t:'prj~',id:p.id,patch:{service:$('#e-v').value,status:$('#e-s').value,days:$('#e-y').value,total:$('#e-t').value,note:mk($('#e-o').value,m)}})}
+    enq({t:'prj~',id:p.id,patch:{service:$('#e-v').value,status:$('#e-s').value,days:$('#e-y').value,total:$('#e-t').value,note:mk($('#e-o').value,m)}});
+    if(dp>0)enq({t:'pay+',id:tid(),projectId:p.id,payment:{amount:dp,paidAt:new Date().toISOString(),mode:'Cash',note:'Phase '+(phn(p)+1)+' · Edit se add'}})}
   else if(DS.tab==='p'){
     const L=(S.pay[p.id]||[]).slice();
     enq({t:'prj~',id:p.id,patch:{total:$('#p-t').value}});
@@ -444,11 +463,12 @@ function cList(){
   <div><small>${pl.length} service</small>${pl.map(p=>`<div class="row"><div>${esc(p.service)} <span class="chip">${p.status}</span> <span class="mut">${money(p.total)}</span></div><div><button class="b o" onclick="svEdit('${p.id}')">Edit</button><button class="b r" onclick="delWork('${p.id}')">Del</button></div></div>`).join('')}</div>
   <div><button class="b" onclick="wf('run',null,'${c.id}')">+ Service</button><button class="b o" onclick="cliForm('${c.id}')">Client edit</button><button class="b r" onclick="cliDel('${c.id}')">Client delete</button></div></div>`}).join('')||'<p class="mut">Koi client nahi mila</p>'}</div>`}
 function cliForm(id){const c=id?cl(id):{};
-  modal(`<h3>${id?'Client edit karo':'Naya client'}</h3><label>Naam</label><input id="fn" value="${esc(c.name)}"><div class="g2"><div><label>Phone</label><input id="fp" inputmode="tel" value="${esc(c.phone)}"></div><div><label>Company (optional)</label><input id="fc" value="${esc(c.company)}"></div></div><label>Email</label><input id="fe" type="email" value="${esc(c.email)}">
+  modal(`<h3>${id?'Client edit karo':'Naya client'}</h3><label>Naam</label><input id="fn" value="${esc(c.name)}"><div class="g2"><div><label>Phone</label><input id="fp" type="tel" inputmode="numeric" autocomplete="off" placeholder="10 digit mobile no." oninput="dig(this)" value="${esc(c.phone)}"></div><div><label>Company (optional)</label><input id="fc" value="${esc(c.company)}"></div></div><label>Email</label><input id="fe" type="email" value="${esc(c.email)}">
   <div class="bar"><button class="b" id="fb" onclick="cliSave('${id||''}')">Save</button><button class="b o" onclick="closeM()">Cancel</button></div>`)}
 function cliSave(id){
   const c={name:$('#fn').value.trim(),phone:$('#fp').value.trim(),email:$('#fe').value.trim(),company:$('#fc').value.trim()};
   if(!c.name)return toast('Naam likho');if(!id&&!c.email)return toast('Email zaroori hai');
+  if(c.phone&&!PHONE_OK(c.phone)&&(!id||c.phone!==cl(id).phone))return toast(PH_MSG);
   enq(id?{t:'cli~',client:Object.assign({id},c)}:{t:'cli+',id:tid(),client:c});closeM();toast('Client save ho gaya')}
 function cliDel(id){const c=cl(id),n=S.projects.filter(p=>p.clientId===id).length;
   if(!confirm(`"${c.name}" ko delete karein?`+(n?`\n\nIske ${n} kaam, unki payments aur requests bhi delete ho jayengi. Wapas nahi aayega.`:'')))return;
