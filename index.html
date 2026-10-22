@@ -282,6 +282,8 @@ function chip(p){const l=left(p);if(!l)return '';return l.n<0?`<span class="chip
 /* ab tak kitne phase ka payment mila (pd). Purane kaam me pd nahi hota to payments ki ginti se nikalte hain */
 function phn(p){const m=meta(p);if(m.pd!=null&&m.pd!=='')return +m.pd||0;const l=S.pay[p.id];if(l&&l.length)return l.length;if(p.paymentCount)return +p.paymentCount;return +p.paid>0?1:0}
 function phTxt(p){const n=phn(p);return p.dues>0?'Phase '+(n+1)+' baaki':(n?n+' phase me complete':'-')}
+const PH=[1,2,3,4,5];
+const phOpts=sel=>PH.map(n=>`<option value="${n}" ${n===sel?'selected':''}>${n===1?'1 baar (ek saath)':n+' baar'}</option>`).join('');
 const mh=(t,s)=>`<div class="mh"><div><h3>${t}</h3>${s?`<small>${s}</small>`:''}</div><button class="x" onclick="closeM()">✕</button></div>`;
 
 /* ---- Client Work ---- */
@@ -321,19 +323,19 @@ function wf(mode,id,cid){
   ${up?`<div><label>Start date</label><input id="ud" type="date" value="${m.ud||''}"></div>`:`<div><label>Start date</label><input id="sd" type="date" value="${m.s||today()}" oninput="wcalc()"></div>
   <div><label>Days</label><input id="dy" type="number" min="0" value="${p&&p.days||''}" oninput="wcalc()"></div><div><label>Total amount (₹)</label><input id="tt" type="number" min="0" value="${p&&p.total||''}" oninput="wcalc()"></div>
   <div><label>Advance / paid (₹)</label><input id="ad" type="number" min="0" oninput="wcalc()"></div><div><label>Dues (₹)</label><input id="du" readonly></div>
-  <div class="full pv" id="pv"></div>
+  <div class="full"><label>Payment kitne phase me lena hai</label><select id="ph" onchange="wcalc()">${phOpts(+m.ph||1)}</select></div><div class="full pv" id="pv"></div>
   <div class="full"><label>Internal note (AI ko nahi jata)</label><textarea id="nt">${esc(p?ntx(p):'')}</textarea></div>`}</div></div>
   <div class="mf"><button class="b" onclick="wfSave()">${p&&!up?'Running shuru karo':'Save'}</button><button class="b o" onclick="closeM()">Cancel</button></div>`);
   wsel();wcalc()}
 function wsel(){const v=$('#wc').value,c=v?cl(v):null;['cn','cp','ce'].forEach((k,i)=>{const e=$('#'+k);if(c)e.value=[c.name,c.phone,c.email][i]||'';else if(e.readOnly)e.value='';e.readOnly=!!c&&!W.id})}
-function wcalc(){if(!$('#tt'))return;const t=+$('#tt').value||0,a=+$('#ad').value||0,d=+$('#dy').value||0,s=$('#sd').value;$('#du').value=Math.max(0,t-a);
-  $('#pv').textContent=(d&&s?'Deadline: '+fd(addD(s,d)):'Days aur start date daalo to deadline dikhega')}
+function wcalc(){if(!$('#tt'))return;const t=+$('#tt').value||0,a=+$('#ad').value||0,n=+$('#ph').value||1,d=+$('#dy').value||0,s=$('#sd').value;$('#du').value=Math.max(0,t-a);
+  $('#pv').textContent=(d&&s?'Deadline: '+fd(addD(s,d))+' · ':'')+(t?`Har phase ≈ ${money(Math.ceil(t/n))} (${n} baar)`:'Total daalo to har phase ka amount dikhega')}
 function wfSave(){
   const up=W.mode==='up',v=$('#wc').value,id=W.id,p=id?pr(id):null,c={name:$('#cn').value.trim(),phone:$('#cp').value.trim(),email:$('#ce').value.trim()};
   if(!c.name||!c.email)return toast('Client ka naam aur email zaroori hai');
   const m=p?meta(p):{};let txt,j;
   if(up){m.ud=$('#ud').value;txt=p?ntx(p):'';j={status:'Upcoming',days:p?p.days:'',total:p?p.total:'',paid:''}}
-  else{m.s=$('#sd').value||today();txt=$('#nt').value;j={status:'Running',days:$('#dy').value,total:$('#tt').value,paid:$('#ad').value};
+  else{m.s=$('#sd').value||today();m.ph=+$('#ph').value||1;txt=$('#nt').value;j={status:'Running',days:$('#dy').value,total:$('#tt').value,paid:$('#ad').value};
     m.pd=+j.paid>0?1:(p&&+p.paid>0?(m.pd||1):0)}
   j.service=$('#sv').value;j.note=mk(txt,m);
   let cidN=v,pidN=id;
@@ -361,9 +363,9 @@ function dTab(p){
   const body=E?`<div class="fg"><div><label>Naam</label><input id="e-n" value="${esc(p.clientName)}"></div><div><label>Phone</label><input id="e-p" value="${esc(p.phone)}"></div><div class="full"><label>Email</label><input id="e-e" value="${esc(p.email)}"></div>
   <div><label>Stage</label><select id="e-s">${STAGES.map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}</select></div><div><label>Service</label><select id="e-v">${SERVICES.map(s=>`<option ${s===p.service?'selected':''}>${s}</option>`).join('')}</select></div>
   <div><label>Start date</label><input id="e-d" type="date" value="${m.s||''}"></div><div><label>Days</label><input id="e-y" type="number" min="0" value="${p.days||''}"></div>
-  <div class="full"><label>Total (₹)</label><input id="e-t" type="number" min="0" value="${p.total||''}"></div>
+  <div><label>Total (₹)</label><input id="e-t" type="number" min="0" value="${p.total||''}"></div><div><label>Payment kitne phase me</label><select id="e-h">${phOpts(+m.ph||1)}</select></div>
   <div class="full"><label>Internal note</label><textarea id="e-o">${esc(ntx(p))}</textarea></div></div><p class="mut">Paid / Dues payments se banta hai — Payment history tab me badlo.</p>`
-  :`<div class="kv"><div><span>Stage</span><b>${p.status}</b></div><div><span>Service</span><b>${esc(p.service)}</b></div><div><span>Start date</span><b>${fd(m.s)}</b></div><div><span>Days / Deadline</span><b>${p.days||'-'}${l?' · '+fd(l.due):''}</b></div><div><span>Total</span><b>${money(p.total)}</b></div><div><span>Paid</span><b>${money(p.paid)}</b></div><div><span>Dues</span><b class="${p.dues>0?'du':''}">${money(p.dues)}</b></div><div><span>Payment</span><b>${phTxt(p)}</b></div></div>${ntx(p)?`<div class="sec">Note</div><div class="pre">${esc(ntx(p))}</div>`:''}`;
+  :`<div class="kv"><div><span>Stage</span><b>${p.status}</b></div><div><span>Service</span><b>${esc(p.service)}</b></div><div><span>Start date</span><b>${fd(m.s)}</b></div><div><span>Days / Deadline</span><b>${p.days||'-'}${l?' · '+fd(l.due):''}</b></div><div><span>Total</span><b>${money(p.total)}</b></div><div><span>Paid</span><b>${money(p.paid)}</b></div><div><span>Dues</span><b class="${p.dues>0?'du':''}">${money(p.dues)}</b></div><div><span>Kitne phase me</span><b>${m.ph?m.ph+' baar':'-'}</b></div><div><span>Payment</span><b>${phTxt(p)}</b></div></div>${ntx(p)?`<div class="sec">Note</div><div class="pre">${esc(ntx(p))}</div>`:''}`;
   return body+`<div class="sec">Is client ki services (${sv.length})</div>`+sv.map(x=>`<div class="row"><div>${esc(x.service)} <span class="chip">${x.status}</span> <span class="mut">${money(x.total)}</span>${x.id===p.id?' <span class="chip">yahi</span>':''}</div><div><button class="b o" onclick="svEdit('${x.id}')">Edit</button><button class="b r" onclick="delWork('${x.id}')">Delete</button></div></div>`).join('')+`<div class="bar"><button class="b o" onclick="wf('run',null,'${p.clientId}')">+ Nayi service add karo</button></div>`}
 /* Payment tab: koi auto plan nahi — bas total / mila / dues aur agla phase. Naya payment me phase khud chuno */
 function dPay(p){
@@ -383,7 +385,7 @@ function nowLocal(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezone
 function dSave(){
   const p=pr(DS.id);if(!p)return;
   if(DS.tab==='d'){
-    const m=Object.assign(meta(p),{s:$('#e-d').value}),k=cl(p.clientId),n={name:$('#e-n').value.trim(),phone:$('#e-p').value.trim(),email:$('#e-e').value.trim()};
+    const m=Object.assign(meta(p),{s:$('#e-d').value,ph:+$('#e-h').value||1}),k=cl(p.clientId),n={name:$('#e-n').value.trim(),phone:$('#e-p').value.trim(),email:$('#e-e').value.trim()};
     if(!n.name)return toast('Naam likho');
     if(n.name!==k.name||n.phone!==k.phone||n.email!==k.email)enq({t:'cli~',client:Object.assign({id:p.clientId,company:k.company||''},n)});
     enq({t:'prj~',id:p.id,patch:{service:$('#e-v').value,status:$('#e-s').value,days:$('#e-y').value,total:$('#e-t').value,note:mk($('#e-o').value,m)}})}
@@ -404,7 +406,7 @@ function addPay(id){
   const paidAt=($('#pd').value?new Date($('#pd').value):new Date()).toISOString();
   const note=['Phase '+n+(fin?' (Final)':''),$('#pn').value.trim()].filter(Boolean).join(' · ');
   enq({t:'pay+',id:tid(),projectId:id,payment:{amount:amt,paidAt,mode:$('#pm').value,note}});
-  enq({t:'prj~',id,patch:{note:mk(ntx(p),Object.assign(meta(p),{pd:n}))}}); // kitne phase me mila — note ke tag me
+  enq({t:'prj~',id,patch:{note:mk(ntx(p),Object.assign(meta(p),{pd:n,ph:fin?n:meta(p).ph}))}}); // kitne phase me mila — note ke tag me
   toast(fin?'Payment complete — '+n+' phase me':'Phase '+n+' payment add ho gayi');dRender();
   const det=fin?`Total ${money(p.total)} ka payment ${n} phase me complete ho gaya. Ab koi dues baaki nahi hai.`:`Phase ${n} ka ${money(amt)} payment mila. Abhi ${money(dues)} dues baaki hai.`;
   if(confirm('"Payment mil gayi" mail bhejna hai?'))return compose({clientId:p.clientId,projectId:id,purpose:'payment_received',work:fin?'Payment '+n+' phase me complete':'Phase '+n+' payment received',details:det,includeMoney:true});
@@ -452,26 +454,26 @@ function cliDel(id){const c=cl(id),n=S.projects.filter(p=>p.clientId===id).lengt
   enq({t:'cli-',id});toast('Client delete ho gaya')}
 
 /* ---- Mail composer ---- */
-const srvP=()=>C.purpose==='upcoming'?'general':C.purpose; // 'upcoming' sirf app ka label hai, server ko 'general' jata hai
+const srvP=()=>C.purpose;
 function compose(o){C=Object.assign({clientId:'',projectId:'',purpose:'general',work:'',details:'',lang:'Hinglish',drafts:[],sel:0,updateId:''},o);if(o.includeMoney===undefined)C.includeMoney=PAYP.includes(C.purpose);cView()}
 function cView(){
   const ps=S.projects.filter(p=>p.clientId===C.clientId);
   modal(`<h3>AI mail composer</h3><label>Client</label><select id="cc" onchange="cSync();C.projectId='';cView()"><option value="">Chuno…</option>${S.clients.map(c=>`<option value="${c.id}" ${c.id===C.clientId?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
   <label>Kaam (payment wali mail ke liye zaroori)</label><select id="cp2"><option value="">— koi nahi —</option>${ps.map(p=>`<option value="${p.id}" ${p.id===C.projectId?'selected':''}>${esc(p.service)} (${p.status})</option>`).join('')}</select>
   <div class="g2"><div><label>Purpose</label><select id="cu" onchange="cSync();C.includeMoney=PAYP.includes(C.purpose);cView()">${PURPOSES.map(([k,l])=>`<option value="${k}" ${k===C.purpose?'selected':''}>${l}</option>`).join('')}</select></div><div><label>Language</label><select id="cl">${['English','Hinglish','Hindi'].map(l=>`<option ${l===C.lang?'selected':''}>${l}</option>`).join('')}</select></div></div>
-  <label>Title / kaam</label><input id="ct" value="${esc(C.work)}"><label>Description</label><textarea id="cd">${esc(C.details)}</textarea>
-  <label class="chk"><input type="checkbox" id="cy" ${C.includeMoney?'checked':''}> Payment history + total/paid/dues shamil karo</label>
+  <label>Title / kaam</label><input id="ct" value="${esc(C.work)}"><label>${C.purpose==='upcoming'?'Client ki requirement (AI isi se mail banayega)':'Description'}</label><textarea id="cd" ${C.purpose==='upcoming'?'placeholder="Client ko kya chahiye? Jaise: attendance form, 3 pages, logo lagana hai…"':''}>${esc(C.details)}</textarea>
+  ${C.purpose==='upcoming'?'':`<label class="chk"><input type="checkbox" id="cy" ${C.includeMoney?'checked':''}> Payment history + total/paid/dues shamil karo</label>`}
   <div class="bar"><button class="b" id="gb" onclick="gen()">Drafts banao</button><button class="b o" onclick="closeM()">Band karo</button></div>
   ${C.drafts.length?`<div class="tabs">${C.drafts.map((d,i)=>`<button class="${i===C.sel?'on':''}" onclick="pick(${i})">${esc(d.style||'Draft '+(i+1))}</button>`).join('')}</div>
   <label>Subject</label><input id="es" value="${esc(C.drafts[C.sel].subject)}"><label>Body</label><textarea id="eb" style="min-height:220px">${esc(C.drafts[C.sel].body)}</textarea>
   <div class="bar"><button class="b" onclick="review()">Review &amp; send</button></div>`:''}`)}
-function cSync(){C.clientId=$('#cc').value;C.projectId=$('#cp2')?.value||'';C.purpose=$('#cu').value;C.lang=$('#cl').value;C.work=$('#ct').value;C.details=$('#cd').value;C.includeMoney=$('#cy').checked}
+function cSync(){C.clientId=$('#cc').value;C.projectId=$('#cp2')?.value||'';C.purpose=$('#cu').value;C.lang=$('#cl').value;C.work=$('#ct').value;C.details=$('#cd').value;C.includeMoney=C.purpose==='upcoming'?false:($('#cy')?$('#cy').checked:C.includeMoney)}
 function keep(){if($('#es')){C.drafts[C.sel].subject=$('#es').value;C.drafts[C.sel].body=$('#eb').value}}
 function pick(i){keep();C.sel=i;cView()}
 async function gen(){cSync();if(!C.clientId)return toast('Pehle client chuno');if(!C.work.trim())return toast('Title likho');
   if(C.includeMoney&&!C.projectId)return toast('Payment block ke liye kaam chuno');
   if(!await ready())return;$('#gb').disabled=true;$('#gb').textContent='AI likh raha hai…';
-  const r=await run(()=>api('generateDrafts',{clientId:C.clientId,projectId:C.projectId,purpose:srvP(),work:C.work,details:C.details,language:C.lang,includeMoney:C.includeMoney,count:4,senderName:cfg().sender||''}));
+  const r=await run(()=>api('generateDrafts',{clientId:C.clientId,projectId:C.projectId,purpose:srvP(),work:C.work,details:C.details,language:C.lang,includeMoney:C.includeMoney,count:4,senderName:'Ominibase Team'}));
   if(r){C.drafts=r.drafts;C.sel=0}cView()}
 function review(){keep();const c=cl(C.clientId),d=C.drafts[C.sel];
   modal(`<h3>Review &amp; send</h3><p><b>To:</b> ${esc(c.email)}</p><p><b>Subject:</b> ${esc(d.subject)}</p><div class="card pre">${esc(d.body)}</div>
@@ -516,7 +518,7 @@ async function cHist(id){if(isT(id))return toast('Abhi sync ho raha hai, 2-3 sec
   `<div class="bar"><button class="b o" onclick="closeM()">Band karo</button></div>`)}
 
 /* ---- Settings ---- */
-function vSet(){$('#v').innerHTML=`<h2>Settings</h2><div class="card"><label>Sender name (AI mail ke end me)</label><input id="sn" value="${esc(cfg().sender)}"><div class="bar"><button class="b" onclick="localStorage.cm=JSON.stringify({sender:$('#sn').value});toast('Save ho gaya')">Save</button><button class="b o" onclick="flush().then(()=>sync(true)).then(()=>toast(Q.length?Q.length+' change abhi baaki hain':'Sab sync hai'))">Abhi sync karo</button><button class="b o" onclick="lockNow()">App lock karo</button></div><p class="mut">Password badalna ho to Apps Script ke Script Properties me APP_PASSWORD badlo.</p></div>`}
+function vSet(){$('#v').innerHTML=`<h2>Settings</h2><div class="card"><p class="mut" style="margin-top:0">Har AI mail ke end me "Ominibase Team" apne aap lagta hai.</p><div class="bar"><button class="b o" onclick="flush().then(()=>sync(true)).then(()=>toast(Q.length?Q.length+' change abhi baaki hain':'Sab sync hai'))">Abhi sync karo</button><button class="b o" onclick="lockNow()">App lock karo</button></div><p class="mut">Password badalna ho to Apps Script ke Script Properties me APP_PASSWORD badlo.</p></div>`}
 
 /* ---- PWA ---- */
 let ip;addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#inst').style.display='inline-block'});
