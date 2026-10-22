@@ -185,7 +185,8 @@ function ap(d,o){
   case'prj-':d.projects=d.projects.filter(p=>p.id!==o.id);delete d.pay[o.id];delete d.up[o.id];break;
   case'pay+':{const p=P(o.projectId);(d.pay[o.projectId]=d.pay[o.projectId]||[]).push({id:o.id,projectId:o.projectId,amount:n(o.payment.amount),paidAt:o.payment.paidAt,mode:o.payment.mode,note:o.payment.note});if(p){p.paid+=n(o.payment.amount);fix(p)}break}
   case'pay-':{const l=d.pay[o.projectId];if(l)d.pay[o.projectId]=l.filter(x=>x.id!==o.id);const p=P(o.projectId);if(p){p.paid=Math.max(0,p.paid-n(o.amount));fix(p)}break}
-  case'up+':{(d.up[o.projectId]=d.up[o.projectId]||[]).push({id:o.id,projectId:o.projectId,type:o.type,description:o.description,days:o.days,status:'Pending'});const p=P(o.projectId);if(p)p.pending=(p.pending||0)+1;break}
+  case'up-':{const l=d.up[o.projectId];if(l)d.up[o.projectId]=l.filter(x=>x.id!==o.id);const p=P(o.projectId);if(p&&o.status==='Pending')p.pending=Math.max(0,(p.pending||0)-1);break}
+  case'up+':{(d.up[o.projectId]=d.up[o.projectId]||[]).push({id:o.id,projectId:o.projectId,type:o.type,description:o.description,days:o.days,status:'Pending',createdAt:o.at||new Date().toISOString()});const p=P(o.projectId);if(p)p.pending=(p.pending||0)+1;break}
   case'up=':{const u=(d.up[o.projectId]||[]).find(x=>x.id===o.id);if(u)Object.assign(u,o.patch);break}
   case'up~':{const u=(d.up[o.projectId]||[]).find(x=>x.id===o.id);if(u&&u.status!==o.status){u.status=o.status;const p=P(o.projectId);if(p&&o.status==='Completed')p.pending=Math.max(0,(p.pending||0)-1)}break}
   }}
@@ -222,7 +223,8 @@ async function send(o){
   case'pay-':return api('deletePayment',{paymentId:o.id});
   case'up+':return api('addUpdate',{update:{projectId:o.projectId,type:o.type,description:o.description,days:o.days}});
   case'up=':return api('updateUpdate',{update:Object.assign({id:o.id,projectId:o.projectId},o.patch)});
-  case'up~':return api('setUpdateStatus',{updateId:o.id,status:o.status})}}
+  case'up~':return api('setUpdateStatus',{updateId:o.id,status:o.status});
+  case'up-':return api('deleteUpdate',{updateId:o.id})}}
 /* pichhli koshish me jawab nahi aaya tha: check karo kahin server par ban to nahi gaya (duplicate se bachne ke liye) */
 async function verify(o){
   const same=(a,b)=>String(a||'').trim()===String(b||'').trim();
@@ -246,7 +248,7 @@ function fin(o,r){
 function reject(o,e){
   Q.shift();const ids=[o.id,o.cid].filter(isT);if(ids.length)Q=Q.filter(x=>!ids.some(i=>JSON.stringify(x).includes('"'+i+'"')));
   persist();derive();draw();
-  const N={'cli+':'Naya client','cli~':'Client edit','cli-':'Client delete','prj+':'Naya kaam','prj~':'Kaam update','arch':'History move','prj-':'Kaam delete','pay+':'Payment add','pay-':'Payment delete','up+':'Request add','up~':'Request complete'};
+  const N={'cli+':'Naya client','cli~':'Client edit','cli-':'Client delete','prj+':'Naya kaam','prj~':'Kaam update','arch':'History move','prj-':'Kaam delete','pay+':'Payment add','pay-':'Payment delete','up+':'Request add','up~':'Request complete','up-':'Request delete'};
   alert('⚠️ '+(N[o.t]||'Change')+' Sheet me save nahi ho paya, isliye wapas kar diya gaya.\nKaaran: '+e.message)}
 /* queue khali hone ke baad: payment ids theek karo, fresh snapshot lo */
 async function after(){
@@ -300,13 +302,13 @@ function ucard(p){const m=meta(p),n=m.ud?dif(m.ud,today()):null;
   <div><button class="b" onclick="wf('run','${p.id}')">Running me switch karo</button><button class="b o" onclick="upMail('${p.id}')">Mail</button><button class="b o" onclick="wf('up','${p.id}')">Edit</button><button class="b r" onclick="delWork('${p.id}')">Delete</button></div></div>`}
 function upMail(id){const p=pr(id),m=meta(p);compose({clientId:p.clientId,projectId:id,purpose:'upcoming',work:p.service+' — upcoming',details:[m.rq,m.ud?'Start date: '+fd(m.ud):''].filter(Boolean).join('\n')})}
 function wcard(p){
-  return `<div class="wc" onclick="openD('${p.id}')"><div>${nm(p)}</div><div>${tm(p)}${esc(p.service)} ${chip(p)}${p.pending?` <span class="badge">${p.pending} request</span>`:''}</div>
+  return `<div class="wc" onclick="openD('${p.id}')"><div>${nm(p)}</div><div>${tm(p)}${esc(p.service)} ${chip(p)}${rchip(p)}${p.pending?` <span class="badge">${p.pending} request</span>`:''}</div>
   <div class="nums"><span>Days<b>${p.days||'-'}</b></span><span>Total<b>${money(p.total)}</b></span><span>Paid<b>${money(p.paid)}</b></span><span>Dues<b class="${p.dues>0?'du':''}">${money(p.dues)}</b></span><span>Agla<b>${p.dues>0?'Phase '+(phn(p)+1):(phn(p)?'✓ Done':'-')}</b></span></div><div>${acts(p)}</div></div>`}
 function vWork(){
-  const live=S.projects.filter(p=>!p.archived),near=live.filter(p=>{const l=left(p);return l&&l.n<=2});
+  const live=S.projects.filter(p=>!p.archived),near=live.filter(p=>{const l=left(p)||rleft(p);return l&&l.n<=2});
   const sec=(st,f)=>{const L=live.filter(p=>p.status===st);return `<h2 class="s-${st}">${st} <span class="cnt">${L.length}</span></h2><div class="grid">${L.map(f).join('')||'<p class="mut">Koi kaam nahi</p>'}</div>`};
   $('#v').innerHTML=`<div class="bar"><button class="b" onclick="wf('run')">+ Naya kaam</button></div>`+
-  (near.length?`<div class="alertbar">⚠ Deadline paas hai: ${near.map(p=>{const n=left(p).n;return `<b>${esc(p.clientName)}</b> (${n<0?-n+' din late':n?n+' din':'aaj'})`}).join(', ')}</div>`:'')+
+  (near.length?`<div class="alertbar">⚠ Deadline paas hai: ${near.map(p=>{const n=(left(p)||rleft(p)).n;return `<b>${esc(p.clientName)}</b> (${n<0?-n+' din late':n?n+' din':'aaj'})`}).join(', ')}</div>`:'')+
   sec('Running',wcard)+sec('Completed',wcard)}
 /* ---- Upcoming clients (alag tab) ---- */
 function vUp(){const L=S.projects.filter(p=>!p.archived&&p.status==='Upcoming');
@@ -358,7 +360,7 @@ function openD(id,edit){DS={id,tab:'d',edit:!!edit};curD=id;dRender();dFetch(id)
 function dRender(){
   const p=pr(DS.id);if(!p){closeM();return}curD=DS.id;
   const T=[['d','Project details'],['p','Payment history'],['r','Change / Update requests']];
-  modal(mh(`${esc(p.clientName)} — ${esc(p.service)}`,`${esc(p.phone)} ${esc(p.email)} · <span class="chip">${p.status}</span> ${chip(p)}`)+
+  modal(mh(`${esc(p.clientName)} — ${esc(p.service)}`,`${esc(p.phone)} ${esc(p.email)} · <span class="chip">${p.status}</span> ${chip(p)}${rchip(p)}`)+
   `<div class="tabs mt">${T.map(([k,l])=>`<button class="${DS.tab===k?'on':''}" onclick="DS.tab='${k}';DS.edit=false;dRender()">${l}</button>`).join('')}</div>
   <div class="mbody" id="dbody">${({d:dTab,p:dPay,r:dReq})[DS.tab](p)}</div>
   <div class="mf"><button class="b" onclick="dSave()" ${DS.edit?'':'disabled'}>Save</button><button class="b o" onclick="DS.edit=!DS.edit;dRender()">${DS.edit?'Cancel':'Edit'}</button><span class="sp"></span><button class="b r" onclick="delWork('${p.id}')">Kaam delete</button></div>`)}
@@ -389,12 +391,18 @@ function dPay(p){
   return head+list+`<div class="sec">Naya payment</div><div class="fg"><div><label>Kaun sa phase</label><select id="pph">${[1,2,3,4,5,6].map(k=>`<option value="${k}" ${k===nx?'selected':''}>Phase ${k}</option>`).join('')}</select></div><div><label>Amount</label><input id="pa" type="number" min="1"></div>
   <div class="full"><label class="chk"><input type="checkbox" id="pfin" onchange="$('#pa').value=this.checked?pr('${p.id}').dues:''" ${p.dues>0?'':'disabled'}> Final payment — pura baaki dues (${money(p.dues)}) ek saath</label></div>
   <div><label>Date & time</label><input id="pd" type="datetime-local" value="${nowLocal()}"></div><div><label>Mode</label><select id="pm">${MODES.map(o=>`<option>${o}</option>`).join('')}</select></div><div class="full"><label>Note</label><input id="pn"></div></div><div class="bar"><button class="b" onclick="addPay('${p.id}')">+ Payment add karo</button></div>`}
+const rDue=r=>(+r.days>0&&r.createdAt)?addD(ymd(r.createdAt),+r.days):null;
+function rleft(p){if(p.status==='Running')return null;const L=(meta(p).rd||[]).slice().sort();return L.length?{due:L[0],n:dif(L[0],today())}:null}
+function rchip(p){const l=rleft(p);if(!l)return '';return `<span class="chip ${l.n<0?'bad':l.n<=2?'warn':''}">Request: ${l.n<0?-l.n+' din late':l.n?l.n+' din baaki':'aaj deadline'}</span>`}
+function rInfo(r){const due=r.status!=='Completed'?rDue(r):null,n=due?dif(due,today()):null;
+  return (r.days?r.days+' din':'')+(due?` · deadline ${fd(due)} <span class="chip ${n<0?'bad':n<=2?'warn':''}">${n<0?-n+' din late':n?n+' din baaki':'Aaj'}</span>`:'')}
+const rdSet=(p,fn)=>{const m=meta(p),a=fn((m.rd||[]).slice());m.rd=a.length?a:'';return mk(ntx(p),m)};
 const CHR=/\s*\[Charge (₹[\d,]+)\]/;
 function dReq(p){
   const u=S.up[p.id],E=DS.edit,TY=['Change','Replace','Update'];
   const list=u?(u.map((r,i)=>E?`<div class="card"><div class="fg"><div><label>Type</label><select id="rt${i}">${TY.map(t=>`<option ${t===r.type?'selected':''}>${t}</option>`).join('')}</select></div><div><label>Days</label><input id="rd${i}" type="number" min="0" value="${r.days||''}"></div><div class="full"><label>Detail</label><input id="rn${i}" value="${esc(r.description)}"></div></div></div>`
-    :`<div class="row"><div>${isT(r.id)?'⏳ ':''}<b>${esc(r.type)}</b> <span class="badge ${r.status==='Completed'?'g':''}">${r.status}</span> ${(CHR.exec(r.description||'')||[])[1]?`<span class="chip warn">Charge ${(CHR.exec(r.description||'')||[])[1]}</span>`:'<span class="chip">Free</span>'}<div>${esc(String(r.description||'').replace(CHR,''))}</div><small>${r.days?r.days+' din':''}</small></div>${r.status!=='Completed'?`<button class="b" onclick="doneUp('${r.id}','${p.id}')">Complete + mail</button>`:''}</div>`).join('')||'<p class="mut">Koi request nahi</p>'):`<p class="mut">${navigator.onLine?'Load ho raha hai…':'Offline — list abhi saved nahi hai'}</p>`;
-  return `<div class="sec">Saari requests</div>`+list+`<div class="sec">Nayi request</div><div class="fg"><div><label>Type</label><select id="ut">${TY.map(t=>`<option>${t}</option>`).join('')}</select></div><div><label>Days (optional)</label><input id="ud2" type="number" min="0"></div><div class="full"><label>Charge (₹) — free ho to khali chhodo</label><input id="uc" type="number" min="0" placeholder="Jaise 500"><small>Charge daaloge to project ke Total me jud jayega, phir Payment history se phase-wise le sakte ho.</small></div><div class="full"><label>Detail</label><input id="un"></div></div><div class="bar"><button class="b" onclick="addUp('${p.id}')">+ Request add karo</button></div>`}
+    :`<div class="row"><div>${isT(r.id)?'⏳ ':''}<b>${esc(r.type)}</b> <span class="badge ${r.status==='Completed'?'g':''}">${r.status}</span> ${(CHR.exec(r.description||'')||[])[1]?`<span class="chip warn">Charge ${(CHR.exec(r.description||'')||[])[1]}</span>`:'<span class="chip">Free</span>'}<div>${esc(String(r.description||'').replace(CHR,''))}</div><small>${rInfo(r)}</small></div><div>${r.status!=='Completed'?`<button class="b" onclick="doneUp('${r.id}','${p.id}')">Complete + mail</button>`:''}<button class="b r" onclick="delUp('${r.id}','${p.id}')">Delete</button></div></div>`).join('')||'<p class="mut">Koi request nahi</p>'):`<p class="mut">${navigator.onLine?'Load ho raha hai…':'Offline — list abhi saved nahi hai'}</p>`;
+  return `<div class="sec">Saari requests</div>`+list+`<div class="sec">Nayi request</div><div class="fg"><div><label>Type</label><select id="ut">${TY.map(t=>`<option>${t}</option>`).join('')}</select></div><div><label>Kitne din lagenge</label><input id="ud2" type="number" min="0" placeholder="Deadline me jud jayega"></div><div class="full"><label>Charge (₹) — free ho to khali chhodo</label><input id="uc" type="number" min="0" placeholder="Jaise 500"><small>Charge daaloge to project ke Total me jud jayega, phir Payment history se phase-wise le sakte ho.</small></div><div class="full"><label>Detail</label><input id="un"></div></div><div class="bar"><button class="b" onclick="addUp('${p.id}')">+ Request add karo</button></div>`}
 function nowLocal(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
 function ecalc(){const t=+$('#e-t').value||0,a=+$('#e-a').value||0;$('#e-du').value=Math.max(0,t-a)}
 function dSave(){
@@ -438,16 +446,35 @@ function delPay(pid,id){if(!confirm('Payment delete karein?'))return;rmPay(pid,i
   const p=pr(id);if(p&&S.pay[id])enq({t:'prj~',id,patch:{note:mk(ntx(p),Object.assign(meta(p),{pd:S.pay[id].length}))}});
   draw();toast('Payment delete ho gayi');dRender()}
 function addUp(id){
-  const p=pr(id),t=$('#ut').value,n=$('#un').value.trim(),c=Math.max(0,Math.round(+$('#uc').value||0)),uid=tid();
+  const p=pr(id),t=$('#ut').value,n=$('#un').value.trim(),c=Math.max(0,Math.round(+$('#uc').value||0)),dy=Math.max(0,Math.round(+$('#ud2').value||0)),uid=tid();
   if(!n)return toast('Request ki detail likho');
-  const d=c?n+' [Charge '+money(c)+']':n;
-  enq({t:'up+',id:uid,projectId:id,type:t,description:d,days:$('#ud2').value});
-  if(c){const m=meta(p);m.ex=(+m.ex||0)+c;enq({t:'prj~',id,patch:{total:(+p.total||0)+c,note:mk(ntx(p),m)}});if(p.archived)enq({t:'arch',id,archived:false})}
-  toast(c?'Request add — '+money(c)+' total me jud gaya':'Request add ho gayi (free)');dRender();
-  if(confirm('"Request mili" mail bhejna hai?'))compose({clientId:p.clientId,projectId:id,purpose:'update_received',work:t+' request',details:d+(c?'\nIs request ka charge '+money(c)+' hai, jo total amount me jod diya gaya hai.':''),updateId:uid,includeMoney:c>0})}
-function doneUp(uid,id){const u=(S.up[id]||[]).find(x=>x.id===uid)||{};
+  const d=c?n+' [Charge '+money(c)+']':n,m=meta(p),patch={};
+  enq({t:'up+',id:uid,projectId:id,type:t,description:d,days:dy||'',at:new Date().toISOString()});
+  if(c){patch.total=(+p.total||0)+c;m.ex=(+m.ex||0)+c}
+  if(dy){if(p.status==='Completed')m.rd=(m.rd||[]).concat(addD(today(),dy)); // kaam complete hai: request ka apna deadline chalega
+         else patch.days=(+p.days||0)+dy}                                      // Running/Upcoming: main deadline me jud jayega
+  if(c||dy){patch.note=mk(ntx(p),m);enq({t:'prj~',id,patch});if(c&&p.archived)enq({t:'arch',id,archived:false})}
+  toast('Request add ho gayi'+(c?' — '+money(c)+' total me jud gaya':' (free)')+(dy?' · +'+dy+' din':''));dRender();
+  if(confirm('"Request mili" mail bhejna hai?'))compose({clientId:p.clientId,projectId:id,purpose:'update_received',work:t+' request',details:d+(c?'\nIs request ka charge '+money(c)+' hai, jo total amount me jod diya gaya hai.':'')+(dy?'\nIs request me lagbhag '+dy+' din lagenge.':''),updateId:uid,includeMoney:c>0})}
+function rmUp(uid,pid,status){const qi=Q.findIndex(o=>o.t==='up+'&&o.id===uid);
+  if(qi>-1&&!(qi===0&&busy)){Q.splice(qi,1);ver++;persist();derive();setSy()}else enq({t:'up-',id:uid,projectId:pid,status})}
+function delUp(uid,id){
+  const p=pr(id),r=(S.up[id]||[]).find(x=>x.id===uid);if(!p||!r)return;
+  const ch=CHR.exec(r.description||''),amt=ch?+ch[1].replace(/[₹,]/g,''):0,dy=+r.days||0,due=rDue(r),m=meta(p),inRd=!!(due&&(m.rd||[]).includes(due)),pend=r.status==='Pending';
+  let msg='Ye request delete karein?';
+  if(amt)msg+='\n• '+ch[1]+' charge project ke total se hat jayega';
+  if(dy&&pend)msg+='\n• '+dy+' din deadline se hat jayenge';
+  if(!confirm(msg))return;
+  const patch={};
+  if(amt>0){patch.total=Math.max(+p.paid||0,(+p.total||0)-amt);m.ex=Math.max(0,(+m.ex||0)-amt)}
+  if(dy&&pend){if(inRd){const a=m.rd.slice();a.splice(a.indexOf(due),1);m.rd=a.length?a:''}else if(+p.days>=dy)patch.days=+p.days-dy}
+  rmUp(uid,id,r.status);
+  if(Object.keys(patch).length||(inRd&&pend)){patch.note=mk(ntx(p),m);enq({t:'prj~',id,patch})}
+  toast('Request delete ho gayi');dRender()}
+function doneUp(uid,id){const u=(S.up[id]||[]).find(x=>x.id===uid)||{},p=pr(id),due=rDue(u);
   enq({t:'up~',id:uid,projectId:id,status:'Completed'});toast('Completed mark ho gaya');
-  compose({clientId:pr(id).clientId,projectId:id,purpose:'update_completed',work:(u.type||'Update')+' complete',details:u.description||'',updateId:uid})}
+  if(due&&(meta(p).rd||[]).includes(due))enq({t:'prj~',id,patch:{note:rdSet(p,a=>{const i=a.indexOf(due);if(i>-1)a.splice(i,1);return a})}});
+  compose({clientId:pr(id).clientId,projectId:id,purpose:'update_completed',work:(u.type||'Update')+' complete',details:u.description?String(u.description).replace(CHR,''):'',updateId:uid})}
 async function dFetch(id){
   if(!id||isT(id)||busy||Q.length||!PW||!navigator.onLine)return;const v=ver;
   try{const[a,b]=await Promise.all([api('getPayments',{projectId:id}),api('getUpdates',{projectId:id})]);
