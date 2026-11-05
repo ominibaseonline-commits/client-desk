@@ -174,7 +174,9 @@ h2.s-Upcoming+.grid .wc{background:#faeeaa;border-left:6px solid #d4a800}
 /* ---- Support inbox ---- */
 .sq{border-left:5px solid var(--line)}.sq.new{border-left-color:var(--warn);background:#fffaf0}
 .sqh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
-.sqp{margin:8px 0;white-space:pre-wrap;word-break:break-word}
+.sqs{margin:10px 0 0;font-size:13px;color:var(--mut)}.sqs b{display:inline-block;background:var(--acs);color:var(--ac);border-radius:8px;padding:2px 9px;font-weight:700}
+.sqp{margin:4px 0 8px;white-space:pre-wrap;word-break:break-word}
+.sqi img.ld{opacity:.45}
 .sqi{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
 .sqi img{width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:zoom-in;background:var(--acs)}
 .sqc a{color:var(--ac);font-weight:600;text-decoration:none;margin-right:12px;white-space:nowrap}
@@ -716,38 +718,71 @@ const sOk=id=>/^[\w-]{10,}$/.test(id);
 const sThumb=(id,w)=>'https://drive.google.com/thumbnail?id='+id+'&sz=w'+w;
 function supClient(x){const p=last10(x.phone),m=String(x.email||'').toLowerCase();
   return S.clients.find(c=>(p&&last10(c.phone)===p)||(m&&String(c.email||'').toLowerCase()===m))}
+/* Support data local me rehta hai (localStorage = text, IndexedDB = photos). Server sirf 90 din ka rakhta hai; purani queries yahin bachi rehti hain. */
+let SUPV=(()=>{try{return localStorage.cmsq?(localStorage.cmsv||''):''}catch{return''}})(),sTick=0;
+const SUP_DAYS=90;
+function supMerge(srv){
+  const sm=new Set(srv.map(x=>x.id)),cut=Date.now()-(SUP_DAYS-1)*864e5;
+  // server me nahi hai + 90 din se purani = server ne saaf kar di, local me rakho. Nayi hai par server me nahi = kahin aur se delete hui.
+  const keep=SQ.filter(x=>!sm.has(x.id)&&new Date(x.createdAt).getTime()<cut).map(x=>Object.assign({},x,{local:1}));
+  return srv.concat(keep).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))}
 async function supFetch(silent){
   if(!PW||!navigator.onLine)return;
-  try{const r=await api('getSupport',{}),L=r.items||[],old=SQ.filter(x=>x.status!=='Done').length;SE='';
-    const ch=JSON.stringify(L)!==JSON.stringify(SQ);SQ=L;try{localStorage.cmsq=JSON.stringify(SQ)}catch{}
-    if(!sFirst&&supNew()>old)toast('🔔 Nayi support query aayi');sFirst=0;
-    if(ch){nav();if(tab==='sup'&&!$('#mb').style.display.includes('flex')){const a=document.activeElement;if(!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)))vSup()}}}
+  try{const r=await api('getSupport',{ver:SUPV});SE='';
+    if(r.same)return;
+    const oldIds=new Set(SQ.map(x=>x.id)),hadLocal=SQ.length>0,L=supMerge(r.items||[]),ch=JSON.stringify(L)!==JSON.stringify(SQ);
+    SQ=L;SUPV=r.ver||'';try{localStorage.cmsq=JSON.stringify(SQ);localStorage.cmsv=SUPV}catch{}
+    const fresh=L.filter(x=>x.status!=='Done'&&!oldIds.has(x.id)).length;
+    if(fresh&&(!sFirst||hadLocal))toast('🔔 Nayi support query aayi'+(fresh>1?' ('+fresh+')':''));sFirst=0;
+    if(ch){nav();if(tab==='sup'&&!$('#mb').style.display.includes('flex')){const a=document.activeElement;if(!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)))vSup()}}
+    supPrefetch()}
   catch(e){if(e.message==='Password galat hai'){lockNow(true);return}
-    SE=/unknown|invalid action|not found/i.test(e.message)?'Support backend Apps Script me abhi add nahi hua (apps-script-support.gs paste karke naya version deploy karo).':e.message;
+    SE=/unknown|invalid action|not found/i.test(e.message)?'Support backend Apps Script me abhi add nahi hua (apps-script-support-v5.8.gs paste karke naya version deploy karo).':e.message;
     if(tab==='sup'){const el=$('#sst');if(el)el.textContent='⚠ '+SE}}}
 function vSup(){
   const n=SQ.filter(x=>x.status!=='Done').length,d=SQ.length-n;
   $('#v').innerHTML=`<div class="tabs">${[['New','Naya / Baaki ('+n+')'],['Done','Ho gaya ('+d+')'],['all','Sab ('+SQ.length+')']].map(([k,l])=>`<button class="${sf===k?'on':''}" onclick="sf='${k}';vSup()">${l}</button>`).join('')}<button onclick="supFetch(false).then(()=>toast('Refresh ho gaya'))">↻ Refresh</button></div><p class="mut" id="sst">${SE?'⚠ '+esc(SE):''}</p><div id="sl"></div>`;
   const L=SQ.filter(x=>sf==='all'||(sf==='Done'?x.status==='Done':x.status!=='Done'));
   $('#sl').innerHTML=L.map(supCard).join('')||`<p class="mut">${sf==='Done'?'Abhi koi query complete nahi hui.':'Koi nayi query nahi. Client ke form bharte hi yahan aa jayegi.'}</p>`;
-  supFetch(true)}
+  supImgs();supFetch(true)}
 function supCard(x){
   const c=supClient(x),done=x.status==='Done',ph=last10(x.phone),w=waNum(x.phone),im=(x.images||[]).filter(sOk);
-  return `<div class="card sq ${done?'':'new'}"><div class="sqh"><div><b>${esc(x.name)}</b> ${done?'<span class="badge g">Done</span>':'<span class="badge">New</span>'}${c?` <span class="chip">Client</span>`:''}<small>${fdt(x.createdAt)}</small></div><span class="chip">${esc(x.service)}</span></div>
+  return `<div class="card sq ${done?'':'new'}"><div class="sqh"><div><b>${esc(x.name)}</b> ${done?'<span class="badge g">Done</span>':'<span class="badge">New</span>'}${c?` <span class="chip">Client</span>`:''}<small>${fdt(x.createdAt)}</small></div></div>
+  <div class="sqs">Service: <b>${esc(x.service)}</b></div>
   <div class="sqp">${esc(x.problem)}</div>
-  ${im.length?`<div class="sqi">${im.map(id=>`<img loading="lazy" src="${sThumb(id,300)}" alt="Photo" onclick="supImg('${id}')">`).join('')}</div>`:''}
+  ${im.length?`<div class="sqi">${im.map(id=>`<img class="${SIMG[id]?'':'ld'}" data-sid="${id}" src="${SIMG[id]||'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='}" alt="Photo" onclick="supImg('${id}')">`).join('')}</div>`:''}
   <div class="sqc">${ph?`<a href="tel:${ph}">📞 ${esc(x.phone)}</a>`:''}${w?`<a href="https://wa.me/${w}" target="_blank" rel="noopener">WhatsApp</a>`:''}<a href="mailto:${esc(x.email)}">${esc(x.email)}</a></div>
   <div class="bar" style="margin-bottom:0"><button class="b" onclick="supReply('${x.id}')">Mail reply</button>${c&&S.projects.some(p=>p.clientId===c.id)?`<button class="b o" onclick="supReq('${x.id}')">Request me jodo</button>`:''}<button class="b o" onclick="supSet('${x.id}','${done?'New':'Done'}')">${done?'Wapas New karo':'Done karo'}</button><button class="b r" onclick="supDel('${x.id}')">Delete</button></div></div>`}
+/* Photo Drive ke sharing/thumbnail par nirbhar nahi: Apps Script se password ke saath seedha laate hain */
+const SIMG={},SBUSY={};
+const IDB=(()=>{let d;const o=()=>d||(d=new Promise((ok,no)=>{try{const r=indexedDB.open('cmimg',1);r.onupgradeneeded=()=>r.result.createObjectStore('i');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}catch(e){no(e)}}));
+  const t=(m,f)=>o().then(db=>new Promise((ok,no)=>{const x=db.transaction('i',m),q=f(x.objectStore('i'));x.oncomplete=()=>ok(q&&q.result);x.onerror=()=>no(x.error)}));
+  return{get:k=>t('readonly',s=>s.get(k)).catch(()=>null),set:(k,v)=>t('readwrite',s=>s.put(v,k)).catch(()=>0),del:k=>t('readwrite',s=>s.delete(k)).catch(()=>0)}})();
+async function supLoadImg(id){
+  if(SIMG[id])return SIMG[id];
+  if(SBUSY[id])return SBUSY[id];
+  return SBUSY[id]=(async()=>{
+    const c=await IDB.get(id);if(c)return SIMG[id]=c;                       // pehle local (turant)
+    try{const r=await api('getSupportImage',{id}),u='data:'+r.mime+';base64,'+r.data;SIMG[id]=u;IDB.set(id,u);return u}
+    catch{return sThumb(id,600)}                                           // fail ho to Drive thumbnail (cache nahi hota)
+  })().finally(()=>{delete SBUSY[id]})}
+/* background me saari photos local save kar lo, taaki server se 90 din baad hatne par bhi dikhti rahein */
+let sPre=0;
+async function supPrefetch(){if(sPre)return;sPre=1;try{for(const x of SQ)for(const id of(x.images||[]).filter(sOk))if(!SIMG[id])await supLoadImg(id)}finally{sPre=0}}
+function supImgs(){document.querySelectorAll('#sl img[data-sid]').forEach(async im=>{const u=await supLoadImg(im.dataset.sid);if(im.isConnected){im.src=u;im.classList.remove('ld')}})}
 function supImg(id){let e=$('#lbx');if(!e){e=document.createElement('div');e.id='lbx';e.onclick=ev=>{if(ev.target===e||ev.target.dataset.x)e.style.display='none'};document.body.appendChild(e)}
-  e.innerHTML=`<img src="${sThumb(id,1600)}" alt="Photo"><div><a href="https://drive.google.com/file/d/${id}/view" target="_blank" rel="noopener">Original kholo</a><button data-x="1">Band karo</button></div>`;e.style.display='flex'}
+  e.innerHTML=`<img src="${SIMG[id]||sThumb(id,1600)}" alt="Photo"><div><a href="https://drive.google.com/file/d/${id}/view" target="_blank" rel="noopener">Original kholo</a><button data-x="1">Band karo</button></div>`;e.style.display='flex'}
 function supReply(id){const x=SQ.find(q=>q.id===id);if(!x)return;const c=supClient(x);
   if(c)return compose({clientId:c.id,purpose:'general',work:'Support: '+x.service,details:'Client ki query:\n'+x.problem});
   location.href='mailto:'+x.email+'?subject='+encodeURIComponent('Re: Support query ['+x.service+']')}
 async function supSet(id,st){const x=SQ.find(q=>q.id===id);if(!x)return;const o=x.status;x.status=st;try{localStorage.cmsq=JSON.stringify(SQ)}catch{}nav();vSup();
+  if(x.local)return;                                                        // 90 din se purani: sirf local me hai, server par nahi
   const r=await run(()=>api('setSupportStatus',{id,status:st}));if(!r){x.status=o;nav();vSup()}}
+function supGone(x){(x.images||[]).forEach(i=>{delete SIMG[i];IDB.del(i)})}
 async function supDel(id){if(!confirm('Ye support query (aur uski photos) delete karein?'))return;const i=SQ.findIndex(q=>q.id===id);if(i<0)return;const x=SQ[i];
   SQ.splice(i,1);try{localStorage.cmsq=JSON.stringify(SQ)}catch{}nav();vSup();
-  const r=await run(()=>api('deleteSupport',{id}),'Query delete ho gayi');if(!r){SQ.splice(i,0,x);nav();vSup()}}
+  if(x.local){supGone(x);toast('Query delete ho gayi');return}
+  const r=await run(()=>api('deleteSupport',{id}),'Query delete ho gayi');if(!r){SQ.splice(i,0,x);try{localStorage.cmsq=JSON.stringify(SQ)}catch{}nav();vSup()}else supGone(x)}
 function supReq(id){const x=SQ.find(q=>q.id===id),c=x&&supClient(x);if(!c)return;const L=S.projects.filter(p=>p.clientId===c.id);if(!L.length)return toast('Is client ka koi kaam nahi hai');
   modal(`${mh('Request me jodo',esc(c.name))}<label>Kaunse kaam me?</label><select id="srp">${L.map(p=>`<option value="${p.id}">${esc(p.service)} · ${p.status}</option>`).join('')}</select>
   <label>Type</label><select id="srt"><option>Change</option><option>Replace</option><option>Update</option></select>
@@ -755,7 +790,9 @@ function supReq(id){const x=SQ.find(q=>q.id===id),c=x&&supClient(x);if(!c)return
 function supReqGo(id){const x=SQ.find(q=>q.id===id);if(!x)return;const pid=$('#srp').value,t=$('#srt').value,im=(x.images||[]).length;
   enq({t:'up+',id:tid(),projectId:pid,type:t,description:('[Support] '+x.problem).slice(0,600)+(im?' (Photos: '+im+')':''),days:'',at:new Date().toISOString()});
   closeM();toast('Request add ho gayi');if(x.status!=='Done')supSet(id,'Done')}
-setInterval(()=>{if(PW&&!document.hidden)supFetch(true)},20000);
+/* Nayi query turant: Support tab khula ho to har 10 sec, baaki tab me har 30 sec; app/tab par wapas aate hi bhi check. Check halka hai (kuch naya na ho to server sirf "same" bolta hai). */
+setInterval(()=>{if(!PW||document.hidden)return;sTick++;if(tab==='sup'||sTick%3===0)supFetch(true)},10000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&PW)supFetch(true)});window.addEventListener('focus',()=>{if(PW)supFetch(true)});window.addEventListener('online',()=>{if(PW)supFetch(true)});
 
 /* ---- Campaign: service wise client list + WhatsApp ---- */
 let CM={msg:'',svc:'all'},CS={};try{CS=JSON.parse(localStorage.cmcs||'{}')}catch{}
