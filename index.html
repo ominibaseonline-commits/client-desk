@@ -170,6 +170,19 @@ h2.s-Running+.grid .wc{background:#ffe6c7;border-left:6px solid #f59e0b}
 h2.s-Requests+.grid .wc{background:#e4d9ff;border-left:6px solid #7c5cf0}
 h2.s-Completed+.grid .wc{background:#cdeff3;border-left:6px solid #14a3b5}
 h2.s-Upcoming+.grid .wc{background:#faeeaa;border-left:6px solid #d4a800}
+
+/* ---- Support inbox ---- */
+.sq{border-left:5px solid var(--line)}.sq.new{border-left-color:var(--warn);background:#fffaf0}
+.sqh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.sqp{margin:8px 0;white-space:pre-wrap;word-break:break-word}
+.sqi{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.sqi img{width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:zoom-in;background:var(--acs)}
+.sqc a{color:var(--ac);font-weight:600;text-decoration:none;margin-right:12px;white-space:nowrap}
+#lbx{position:fixed;inset:0;background:#000d;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+#lbx img{max-width:100%;max-height:82vh;border-radius:8px;background:#fff}
+#lbx div{margin-top:12px;display:flex;gap:10px}
+#lbx a,#lbx button{color:#fff;border:1px solid #fff8;background:none;border-radius:8px;padding:7px 14px;font:inherit;text-decoration:none;cursor:pointer}
+.lnk{display:flex;gap:8px;flex-wrap:wrap}.lnk input{flex:1;min-width:200px}
 </style>
 </head>
 <body>
@@ -214,7 +227,7 @@ async function run(fn,ok){try{const r=await fn();if(ok)toast(ok);return r}catch(
 /* ---- Lock ---- */
 async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('cm:'+s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function lockNow(forget){PW='';closeM();if(forget){localStorage.removeItem('cmh')}$('#lp').value='';$('#le').textContent='';$('#lock').style.display='flex';$('#lp').focus()}
-function showApp(){$('#lock').style.display='none';draw()}
+function showApp(){$('#lock').style.display='none';draw();setTimeout(()=>supFetch(true),800)}
 async function unlock(){
   const v=$('#lp').value;if(!v)return;$('#le').textContent='';const h=await sha(v),saved=localStorage.cmh,cache=localStorage.cmd;
   if(saved&&cache){ // fast path: local data turant, offline bhi chalta hai; server se peeche sync
@@ -338,14 +351,14 @@ async function ready(){const t=()=>[C.clientId,C.projectId,C.updateId].some(isT)
 function modal(h){$('#m').innerHTML=h.startsWith('<div class="mh">')?h:'<div class="mbody">'+h+'</div>';$('#mb').style.display='flex'}
 function closeM(){curD='';$('#mb').style.display='none'}
 $('#mb').onclick=e=>{if(e.target.id==='mb')closeM()};
-const IC={work:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',upc:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',cli:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',hist:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',camp:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l2-5.2A8.4 8.4 0 1 1 21 11.5z"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>'};
+const IC={sup:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.9 4.9 4.3 4.3M14.8 14.8l4.3 4.3M14.8 9.2l4.3-4.3M4.9 19.1l4.3-4.3"/>',work:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',upc:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',cli:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',hist:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',camp:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l2-5.2A8.4 8.4 0 1 1 21 11.5z"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>'};
 const ico=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
-function nav(){const uc=S.projects.filter(p=>!p.archived&&p.status==='Upcoming').length,u=uc?' ('+uc+')':'';
-  const T=[['work','Client Work','Work'],['upc','Upcoming'+u,'Upcoming'+u],['cli','Clients','Clients'],['hist','History','History'],['mail','Quick Mail','Mail'],['camp','Campaign','Campaign'],['set','Settings','Settings']],P=['work','upc','cli','mail'];
+function nav(){const sn=supNew(),sb=sn?' ('+sn+')':'',uc=S.projects.filter(p=>!p.archived&&p.status==='Upcoming').length,u=uc?' ('+uc+')':'';
+  const T=[['work','Client Work','Work'],['upc','Upcoming'+u,'Upcoming'+u],['cli','Clients','Clients'],['hist','History','History'],['mail','Quick Mail','Mail'],['sup','Support'+sb,'Support'+sb],['camp','Campaign','Campaign'],['set','Settings','Settings']],P=['work','upc','cli','mail'];
   const B=(t,i)=>`<button style="order:${i}" class="${tab===t[0]?'on':''}" onclick="tab='${t[0]}';$('#nav').classList.remove('open');draw()"><span class="ic">${ico(t[0])}</span><span class="lf">${t[1]}</span><span class="ls">${t[2]}</span></button>`;
-  $('#nav').innerHTML=`<div class="nb"><span class="lg">CD</span><b>Client Desk</b></div><div class="nl">${T.map((t,i)=>P.includes(t[0])?B(t,i):'').join('')}<button style="order:99" class="mbtn ${P.includes(tab)?'':'on'}" onclick="event.stopPropagation();$('#nav').classList.toggle('open')"><span class="ic">${ico('more')}</span><span class="lf">More</span><span class="ls">More</span></button><div class="nx">${T.map((t,i)=>P.includes(t[0])?'':B(t,i)).join('')}</div></div>`;
+  $('#nav').innerHTML=`<div class="nb"><span class="lg">CD</span><b>Client Desk</b></div><div class="nl">${T.map((t,i)=>P.includes(t[0])?B(t,i):'').join('')}<button style="order:99" class="mbtn ${P.includes(tab)?'':'on'}" onclick="event.stopPropagation();$('#nav').classList.toggle('open')"><span class="ic">${ico('more')}</span><span class="lf">More${sn?' •':''}</span><span class="ls">More${sn?' •':''}</span></button><div class="nx">${T.map((t,i)=>P.includes(t[0])?'':B(t,i)).join('')}</div></div>`;
   const h=document.querySelector('header h1');if(h)h.textContent=T.find(t=>t[0]===tab)[1].replace(/ \(\d+\)$/,'')}
-function draw(){if(!PW)return;nav();({work:vWork,upc:vUp,cli:vCli,hist:vHist,mail:vMail,camp:vCamp,set:vSet})[tab]()}
+function draw(){if(!PW)return;nav();({work:vWork,upc:vUp,cli:vCli,hist:vHist,mail:vMail,camp:vCamp,set:vSet,sup:vSup})[tab]()}
 
 /* ---- Dates + extra fields ----
    Start date / upcoming date / kitne phase paid (pd) ke liye Sheet me alag column nahi hai, isliye ye note ke end me chhote tag (⟦cd:{...}⟧) me save hote hain
@@ -679,8 +692,70 @@ async function cHist(id){if(isT(id))return toast('Abhi sync ho raha hai, 2-3 sec
   `<div class="bar"><button class="b o" onclick="closeM()">Band karo</button></div>`)}
 
 /* ---- Settings ---- */
-function vSet(){$('#v').innerHTML=`<h2>Settings</h2><div class="card"><p class="mut" style="margin-top:0">Har AI mail ke end me "Ominibase Team" apne aap lagta hai.</p><div class="bar"><button class="b o" onclick="flush().then(()=>sync(true)).then(()=>toast(Q.length?Q.length+' change abhi baaki hain':'Sab sync hai'))">Abhi sync karo</button><button class="b o" onclick="lockNow()">App lock karo</button></div><p class="mut">Password badalna ho to Apps Script ke Script Properties me APP_PASSWORD badlo.</p></div>`}
+/* Client ko bhejne wala Support form ka link. Client ke naam wala link chuno to uska naam/phone/email form me pehle se bhara aata hai. */
+const supUrl=cid=>{const u=new URL('support.html',location.href.split('#')[0].split('?')[0]);const c=cid?S.clients.find(x=>x.id===cid):null;
+  if(c){u.searchParams.set('name',c.name||'');if(c.phone)u.searchParams.set('phone',String(c.phone).replace(/\D/g,'').slice(-10));if(c.email)u.searchParams.set('email',c.email)}return u.href};
+function spPick(){const v=$('#spc').value;$('#spu').value=supUrl(v)}
+async function spCopy(){const t=$('#spu').value;try{await navigator.clipboard.writeText(t)}catch{$('#spu').select();document.execCommand('copy')}toast('Support link copy ho gaya')}
+function spWa(){const cid=$('#spc').value,c=cid?S.clients.find(x=>x.id===cid):null,n=c?waNum(c.phone):'',
+  t='Hello'+(c?' '+c.name:'')+', koi bhi problem ya query ho to is form me likh dijiye, hamari team 24 ghante me reply karegi:\n'+$('#spu').value;
+  window.open('https://wa.me/'+n+'?text='+encodeURIComponent(t),'_blank')}
+async function spTest(){const r=await run(()=>api('getSupport',{}));if(r){SQ=r.items||[];try{localStorage.cmsq=JSON.stringify(SQ)}catch{}toast('Support backend chal raha hai ✓ ('+SQ.length+' query)')}}
+function vSet(){$('#v').innerHTML=`<h2>Settings</h2>
+<div class="card"><b>Client Support Form link</b><p class="mut" style="margin:4px 0 10px">Ye link kisi bhi client ko bhejo. Wo form bharega to query seedhe yahan <b>Support</b> tab me aayegi, photos ke saath. Client ko Client Desk ka password ya login nahi dikhta.</p>
+<label>Kis ke liye link?</label><select id="spc" onchange="spPick()"><option value="">Sabhi clients ke liye (general link)</option>${S.clients.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${esc(c.id)}">${esc(c.name)}${c.phone?' · '+esc(c.phone):''}</option>`).join('')}</select>
+<div class="lnk" style="margin-top:10px"><input id="spu" readonly value="${esc(supUrl(''))}" onclick="this.select()"></div>
+<div class="bar"><button class="b" onclick="spCopy()">Link copy karo</button><button class="b o" onclick="spWa()">WhatsApp se bhejo</button><button class="b o" onclick="window.open($('#spu').value,'_blank')">Form kholo</button><button class="b o" onclick="spTest()">Backend check karo</button></div></div>
+<div class="card"><p class="mut" style="margin-top:0">Har AI mail ke end me "Ominibase Team" apne aap lagta hai.</p><div class="bar"><button class="b o" onclick="flush().then(()=>sync(true)).then(()=>toast(Q.length?Q.length+' change abhi baaki hain':'Sab sync hai'))">Abhi sync karo</button><button class="b o" onclick="lockNow()">App lock karo</button></div><p class="mut">Password badalna ho to Apps Script ke Script Properties me APP_PASSWORD badlo.</p></div>`}
 
+/* ---- Support inbox: client ke Support form ki queries (Sheet ke "Support" tab se aati hain) ---- */
+let SQ=(()=>{try{return JSON.parse(localStorage.cmsq||'[]')}catch{return[]}})(),SE='',sf='New',sFirst=1;
+const supNew=()=>SQ.filter(x=>x.status!=='Done').length;
+const last10=v=>String(v||'').replace(/\D/g,'').slice(-10);
+const sOk=id=>/^[\w-]{10,}$/.test(id);
+const sThumb=(id,w)=>'https://drive.google.com/thumbnail?id='+id+'&sz=w'+w;
+function supClient(x){const p=last10(x.phone),m=String(x.email||'').toLowerCase();
+  return S.clients.find(c=>(p&&last10(c.phone)===p)||(m&&String(c.email||'').toLowerCase()===m))}
+async function supFetch(silent){
+  if(!PW||!navigator.onLine)return;
+  try{const r=await api('getSupport',{}),L=r.items||[],old=SQ.filter(x=>x.status!=='Done').length;SE='';
+    const ch=JSON.stringify(L)!==JSON.stringify(SQ);SQ=L;try{localStorage.cmsq=JSON.stringify(SQ)}catch{}
+    if(!sFirst&&supNew()>old)toast('🔔 Nayi support query aayi');sFirst=0;
+    if(ch){nav();if(tab==='sup'&&!$('#mb').style.display.includes('flex')){const a=document.activeElement;if(!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)))vSup()}}}
+  catch(e){if(e.message==='Password galat hai'){lockNow(true);return}
+    SE=/unknown|invalid action|not found/i.test(e.message)?'Support backend Apps Script me abhi add nahi hua (apps-script-support.gs paste karke naya version deploy karo).':e.message;
+    if(tab==='sup'){const el=$('#sst');if(el)el.textContent='⚠ '+SE}}}
+function vSup(){
+  const n=SQ.filter(x=>x.status!=='Done').length,d=SQ.length-n;
+  $('#v').innerHTML=`<div class="tabs">${[['New','Naya / Baaki ('+n+')'],['Done','Ho gaya ('+d+')'],['all','Sab ('+SQ.length+')']].map(([k,l])=>`<button class="${sf===k?'on':''}" onclick="sf='${k}';vSup()">${l}</button>`).join('')}<button onclick="supFetch(false).then(()=>toast('Refresh ho gaya'))">↻ Refresh</button></div><p class="mut" id="sst">${SE?'⚠ '+esc(SE):''}</p><div id="sl"></div>`;
+  const L=SQ.filter(x=>sf==='all'||(sf==='Done'?x.status==='Done':x.status!=='Done'));
+  $('#sl').innerHTML=L.map(supCard).join('')||`<p class="mut">${sf==='Done'?'Abhi koi query complete nahi hui.':'Koi nayi query nahi. Client ke form bharte hi yahan aa jayegi.'}</p>`;
+  supFetch(true)}
+function supCard(x){
+  const c=supClient(x),done=x.status==='Done',ph=last10(x.phone),w=waNum(x.phone),im=(x.images||[]).filter(sOk);
+  return `<div class="card sq ${done?'':'new'}"><div class="sqh"><div><b>${esc(x.name)}</b> ${done?'<span class="badge g">Done</span>':'<span class="badge">New</span>'}${c?` <span class="chip">Client</span>`:''}<small>${fdt(x.createdAt)}</small></div><span class="chip">${esc(x.service)}</span></div>
+  <div class="sqp">${esc(x.problem)}</div>
+  ${im.length?`<div class="sqi">${im.map(id=>`<img loading="lazy" src="${sThumb(id,300)}" alt="Photo" onclick="supImg('${id}')">`).join('')}</div>`:''}
+  <div class="sqc">${ph?`<a href="tel:${ph}">📞 ${esc(x.phone)}</a>`:''}${w?`<a href="https://wa.me/${w}" target="_blank" rel="noopener">WhatsApp</a>`:''}<a href="mailto:${esc(x.email)}">${esc(x.email)}</a></div>
+  <div class="bar" style="margin-bottom:0"><button class="b" onclick="supReply('${x.id}')">Mail reply</button>${c&&S.projects.some(p=>p.clientId===c.id)?`<button class="b o" onclick="supReq('${x.id}')">Request me jodo</button>`:''}<button class="b o" onclick="supSet('${x.id}','${done?'New':'Done'}')">${done?'Wapas New karo':'Done karo'}</button><button class="b r" onclick="supDel('${x.id}')">Delete</button></div></div>`}
+function supImg(id){let e=$('#lbx');if(!e){e=document.createElement('div');e.id='lbx';e.onclick=ev=>{if(ev.target===e||ev.target.dataset.x)e.style.display='none'};document.body.appendChild(e)}
+  e.innerHTML=`<img src="${sThumb(id,1600)}" alt="Photo"><div><a href="https://drive.google.com/file/d/${id}/view" target="_blank" rel="noopener">Original kholo</a><button data-x="1">Band karo</button></div>`;e.style.display='flex'}
+function supReply(id){const x=SQ.find(q=>q.id===id);if(!x)return;const c=supClient(x);
+  if(c)return compose({clientId:c.id,purpose:'general',work:'Support: '+x.service,details:'Client ki query:\n'+x.problem});
+  location.href='mailto:'+x.email+'?subject='+encodeURIComponent('Re: Support query ['+x.service+']')}
+async function supSet(id,st){const x=SQ.find(q=>q.id===id);if(!x)return;const o=x.status;x.status=st;try{localStorage.cmsq=JSON.stringify(SQ)}catch{}nav();vSup();
+  const r=await run(()=>api('setSupportStatus',{id,status:st}));if(!r){x.status=o;nav();vSup()}}
+async function supDel(id){if(!confirm('Ye support query (aur uski photos) delete karein?'))return;const i=SQ.findIndex(q=>q.id===id);if(i<0)return;const x=SQ[i];
+  SQ.splice(i,1);try{localStorage.cmsq=JSON.stringify(SQ)}catch{}nav();vSup();
+  const r=await run(()=>api('deleteSupport',{id}),'Query delete ho gayi');if(!r){SQ.splice(i,0,x);nav();vSup()}}
+function supReq(id){const x=SQ.find(q=>q.id===id),c=x&&supClient(x);if(!c)return;const L=S.projects.filter(p=>p.clientId===c.id);if(!L.length)return toast('Is client ka koi kaam nahi hai');
+  modal(`${mh('Request me jodo',esc(c.name))}<label>Kaunse kaam me?</label><select id="srp">${L.map(p=>`<option value="${p.id}">${esc(p.service)} · ${p.status}</option>`).join('')}</select>
+  <label>Type</label><select id="srt"><option>Change</option><option>Replace</option><option>Update</option></select>
+  <div class="bar"><button class="b" onclick="supReqGo('${id}')">Request add karo</button><button class="b o" onclick="closeM()">Cancel</button></div>`)}
+function supReqGo(id){const x=SQ.find(q=>q.id===id);if(!x)return;const pid=$('#srp').value,t=$('#srt').value,im=(x.images||[]).length;
+  enq({t:'up+',id:tid(),projectId:pid,type:t,description:('[Support] '+x.problem).slice(0,600)+(im?' (Photos: '+im+')':''),days:'',at:new Date().toISOString()});
+  closeM();toast('Request add ho gayi');if(x.status!=='Done')supSet(id,'Done')}
+setInterval(()=>{if(PW&&!document.hidden)supFetch(true)},20000);
 
 /* ---- Campaign: service wise client list + WhatsApp ---- */
 let CM={msg:'',svc:'all'},CS={};try{CS=JSON.parse(localStorage.cmcs||'{}')}catch{}
