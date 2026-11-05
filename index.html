@@ -790,8 +790,8 @@ function supReq(id){const x=SQ.find(q=>q.id===id),c=x&&supClient(x);if(!c)return
 function supReqGo(id){const x=SQ.find(q=>q.id===id);if(!x)return;const pid=$('#srp').value,t=$('#srt').value,im=(x.images||[]).length;
   enq({t:'up+',id:tid(),projectId:pid,type:t,description:('[Support] '+x.problem).slice(0,600)+(im?' (Photos: '+im+')':''),days:'',at:new Date().toISOString()});
   closeM();toast('Request add ho gayi');if(x.status!=='Done')supSet(id,'Done')}
-/* Nayi query turant: Support tab khula ho to har 10 sec, baaki tab me har 30 sec; app/tab par wapas aate hi bhi check. Check halka hai (kuch naya na ho to server sirf "same" bolta hai). */
-setInterval(()=>{if(!PW||document.hidden)return;sTick++;if(tab==='sup'||sTick%3===0)supFetch(true)},10000);
+/* Nayi query turant: Support tab khula ho to har 5 sec, baaki tab me har 30 sec; app/tab par wapas aate hi bhi check. Check halka hai (kuch naya na ho to server sirf "same" bolta hai). */
+setInterval(()=>{if(!PW||document.hidden)return;sTick++;if(tab==='sup'||sTick%6===0)supFetch(true)},5000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&PW)supFetch(true)});window.addEventListener('focus',()=>{if(PW)supFetch(true)});window.addEventListener('online',()=>{if(PW)supFetch(true)});
 
 /* ---- Campaign: service wise client list + WhatsApp ---- */
