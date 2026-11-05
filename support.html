@@ -74,7 +74,7 @@ textarea{min-height:120px;resize:vertical}
 /* Client Desk ka hi Apps Script. 'submitSupport' action bina password ke chalta hai, baaki sab password se locked hain. */
 const API='https://script.google.com/macros/s/AKfycbyYw03VeCYKDtNWiWTX_R4oz9bT5SiX3nVpXwZ6SkRouhTOFk1g-uNzZCxJ1Uld_NVTkw/exec';
 const $=s=>document.querySelector(s),MAX=4;
-let imgs=[],busy=0;
+let imgs=[],busy=0;const DEBUG=/[?&]debug=1/.test(location.search); // support.html?debug=1 par server ka asli error dikhta hai
 // Client-specific link se naam/phone/email pehle se bhare aate hain: support.html?name=..&phone=..&email=..
 try{const u=new URLSearchParams(location.search);['name:n','phone:p','email:e'].forEach(x=>{const[k,id]=x.split(':'),v=u.get(k);if(v)$('#'+id).value=v.slice(0,120)});
 const sv=u.get('service');if(sv)[...$('#s').options].forEach(o=>{if(o.text===sv)$('#s').value=o.text})}catch{}
@@ -110,9 +110,9 @@ $('#f').onsubmit=async e=>{
   const ac=new AbortController(),t=setTimeout(()=>ac.abort(),60000);
   try{
     const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d),signal:ac.signal});
-    const j=await r.json();if(!j.ok)throw new Error(j.error||'Server error');
+    const j=await r.json();if(!j.ok){console.error('Support submit error:',j.error);if(DEBUG)showErr('Server: '+(j.error||'error'));throw new Error('srv')}
     imgs=[];render();$('#f').reset();$('#f').hidden=true;$('#done').hidden=false;window.scrollTo(0,0)
-  }catch(x){showErr('Query abhi submit nahi ho payi. Internet check karke dobara try kijiye.')}
+  }catch(x){console.error(x);if(!(DEBUG&&x.message==='srv'))showErr('Query abhi submit nahi ho payi. Internet check karke dobara try kijiye.')}
   clearTimeout(t);b.disabled=false;b.textContent='Submit Query'};
 $('#again').onclick=()=>{$('#done').hidden=true;$('#f').hidden=false};
 render();
