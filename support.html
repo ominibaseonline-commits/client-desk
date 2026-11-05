@@ -98,22 +98,40 @@ function shrink(file){return new Promise((ok,no)=>{
     const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);
     const url=c.toDataURL('image/jpeg',.72);URL.revokeObjectURL(u);ok({url,data:url.split(',')[1]})};
   im.onerror=()=>{URL.revokeObjectURL(u);no()};im.src=u})}
-$('#f').onsubmit=async e=>{
+/* ---- Instant submit: success turant dikhta hai, bhejna background me hota hai (net slow/band ho to bhi query khoti nahi: save rehti hai aur dobara bheji jati hai) ---- */
+const QK='ominibase_support_queue';let pend=[],flushing=0;
+function saveQ(){try{localStorage.setItem(QK,JSON.stringify(pend))}catch{try{localStorage.setItem(QK,JSON.stringify(pend.map(p=>Object.assign({},p,{images:[]}))))}catch{}}}
+try{pend=JSON.parse(localStorage.getItem(QK)||'[]')||[]}catch{pend=[]}
+async function post(d){
+  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),60000);
+  try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d),signal:ac.signal});return await r.json()}
+  finally{clearTimeout(t)}}
+async function flush(){
+  if(flushing||!pend.length)return;flushing=1;
+  while(pend.length){
+    const d=pend[0];
+    try{
+      const j=await post(d);
+      if(j.ok||/^(Missing|Invalid|Phone)/i.test(j.error||'')){pend.shift();saveQ();continue}   // ho gaya, ya data hi galat hai (dobara bhejne se faayda nahi)
+      console.error('Support submit error:',j.error);throw 0
+    }catch(x){d.tries=(d.tries||0)+1;saveQ();break}}
+  flushing=0;
+  if(pend.length&&(pend[0].tries||0)<10)setTimeout(flush,Math.min(30000,3000*(pend[0].tries||1)))}
+window.addEventListener('online',flush);
+window.addEventListener('beforeunload',e=>{if(pend.length){e.preventDefault();e.returnValue=''}});
+$('#f').onsubmit=e=>{
   e.preventDefault();
   if(busy)return showErr('Thoda ruko, images tayyar ho rahi hain.');
-  const d={action:'submitSupport',name:$('#n').value.trim(),phone:$('#p').value.trim(),email:$('#e').value.trim(),service:$('#s').value,problem:$('#q').value.trim(),website:$('#hp').value,
+  const d={action:'submitSupport',cid:Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:$('#n').value.trim(),phone:$('#p').value.trim(),email:$('#e').value.trim(),service:$('#s').value,problem:$('#q').value.trim(),website:$('#hp').value,
     images:imgs.map((x,i)=>({name:'image'+(i+1)+'.jpg',mime:'image/jpeg',data:x.data}))};
   if(!d.name||!d.phone||!d.email||!d.service||!d.problem)return showErr('Saare * wale fields bharna zaroori hai.');
   if(d.phone.replace(/\D/g,'').length<10)return showErr('Phone number kam se kam 10 digit ka hona chahiye.');
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email))return showErr('Sahi email likhiye.');
-  showErr('');const b=$('#go');b.disabled=true;b.textContent='Submitting...';
-  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),60000);
-  try{
-    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d),signal:ac.signal});
-    const j=await r.json();if(!j.ok){console.error('Support submit error:',j.error);if(DEBUG)showErr('Server: '+(j.error||'error'));throw new Error('srv')}
-    imgs=[];render();$('#f').reset();$('#f').hidden=true;$('#done').hidden=false;window.scrollTo(0,0)
-  }catch(x){console.error(x);if(!(DEBUG&&x.message==='srv'))showErr('Query abhi submit nahi ho payi. Internet check karke dobara try kijiye.')}
-  clearTimeout(t);b.disabled=false;b.textContent='Submit Query'};
+  showErr('');
+  pend.push(d);saveQ();                                   // pehle safe save
+  imgs=[];render();$('#f').reset();$('#f').hidden=true;$('#done').hidden=false;window.scrollTo(0,0);   // turant success
+  flush()};                                               // bhejna background me
+flush();                                                  // pichli baar ki adhuri query ho to ab bhej do
 $('#again').onclick=()=>{$('#done').hidden=true;$('#f').hidden=false};
 render();
 </script>
