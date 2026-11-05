@@ -6,10 +6,9 @@
 <title>Client Desk</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#0f5e57">
+<meta name="theme-color" content="#ffffff">
 <style>
 :root{--bg:#f4f6f3;--card:#fff;--ink:#16231f;--mut:#63736e;--line:#dbe3df;--ac:#0f5e57;--acs:#e1f0ed;--warn:#b45309;--warns:#fdf0dc;--bad:#b42318;--ok:#1a7f4b}
-@media(prefers-color-scheme:dark){:root{--bg:#101715;--card:#182320;--ink:#e6efec;--mut:#93a6a0;--line:#2a3a35;--ac:#4cc2b3;--acs:#1c3531;--warn:#f0b35a;--warns:#3a2c14;--bad:#ff8a7d;--ok:#5fd09a}}
 *{box-sizing:border-box}html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 header{display:flex;align-items:center;gap:12px;padding:14px 16px 0;flex-wrap:wrap}
@@ -110,6 +109,54 @@ input[readonly]{background:var(--bg);color:var(--mut)}
 .cr .ci{flex:1;min-width:0}.cr .ci b{display:block}.cr .ci span{display:block;color:var(--mut);font-size:13px;overflow-wrap:anywhere}
 button.wa{background:#25d366;border-color:#25d366;color:#fff;white-space:nowrap;margin:0}
 @media(max-width:520px){.cr{flex-wrap:wrap}.cr .ci{flex-basis:100%}button.wa{width:100%}}
+
+/* ===== v2 look: white dashboard — desktop par left sidebar, phone par app jaisa bottom bar ===== */
+:root{--bg:#eef0f5;--card:#fff;--ink:#171b22;--mut:#6b7280;--line:#e6e9ef;--lime:#e6f86a;--sh:0 2px 12px #1b25410f}
+html{color-scheme:light}
+.nb{display:flex;align-items:center;gap:10px;padding:4px 6px 16px}
+.lg{width:38px;height:38px;border-radius:12px;background:var(--lime);display:grid;place-items:center;font-weight:800;font-size:14px;color:var(--ink)}
+.nb b{font-size:17px;letter-spacing:-.2px}
+.ic{display:grid;place-items:center}.ic svg{width:20px;height:20px}
+.ls,.mbtn{display:none}
+.wc{border:0;border-radius:18px;box-shadow:var(--sh);padding:14px}
+.card{border-radius:16px;box-shadow:var(--sh)}
+button.b{border-radius:12px}
+h2.s-Running+.grid .wc{background:#fff3e6}
+h2.s-Requests+.grid .wc{background:#efeaff}
+h2.s-Completed+.grid .wc{background:#e5f6f8}
+h2.s-Upcoming+.grid .wc{background:#fdf6d3}
+@media(min-width:900px){
+  nav{position:fixed;left:16px;top:16px;bottom:16px;width:236px;max-width:none;margin:0;background:var(--card);border-radius:24px;box-shadow:var(--sh);padding:16px 14px;display:block;overflow-y:auto;z-index:4}
+  .nl{display:flex;flex-direction:column;gap:8px}.nx{display:contents}
+  nav button{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border-radius:99px;background:#f1f3f7;color:var(--ink);font-size:15px;text-align:left}
+  nav button:hover{background:#e7eaf0}
+  nav button.on{background:var(--lime);color:var(--ink)}
+  header,main{max-width:none;margin-left:272px;margin-right:24px}
+  header{padding:24px 0 6px}h1{font-size:26px}
+  main{padding:0 0 48px}
+}
+@media(max-width:899px){
+  header{position:sticky;top:0;z-index:3;background:var(--card);box-shadow:0 1px 0 var(--line);padding:12px 16px;margin:0;max-width:none;flex-wrap:nowrap}
+  header h1{font-size:19px}
+  .nb{display:none}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:4;max-width:none;margin:0;background:var(--card);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));display:block;overflow:visible}
+  .nl{display:flex;justify-content:space-around}
+  nav button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:14px;background:none;color:var(--mut);font-size:11px}
+  nav button .ic{width:52px;height:30px;border-radius:99px}
+  nav button.on{background:none;color:var(--ink)}nav button.on .ic{background:var(--lime)}
+  .lf{display:none}.ls{display:block}.mbtn{display:flex}
+  .nx{display:none}
+  nav.open .nx{display:flex;flex-direction:column;position:fixed;right:10px;bottom:calc(76px + env(safe-area-inset-bottom));background:var(--card);border-radius:18px;box-shadow:0 12px 40px #1b254133;padding:8px;gap:2px;min-width:190px}
+  nav.open .nx button{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;font-size:15px;padding:11px 14px;color:var(--ink)}
+  nav.open .nx button .ic{width:auto;height:auto;background:none!important}
+  nav.open .nx button.on{background:var(--lime)}
+  nav.open .nx .lf{display:block}nav.open .nx .ls{display:none}
+  main{max-width:none;padding:6px 12px calc(96px + env(safe-area-inset-bottom))}
+  body{padding-bottom:0}
+  #toast{bottom:calc(88px + env(safe-area-inset-bottom))}
+  #mb{align-items:flex-end;padding:0}
+  #m{max-width:none;margin:0;border-radius:22px 22px 0 0;max-height:92vh;max-height:92dvh}
+}
 </style>
 </head>
 <body>
@@ -278,8 +325,13 @@ async function ready(){const t=()=>[C.clientId,C.projectId,C.updateId].some(isT)
 function modal(h){$('#m').innerHTML=h.startsWith('<div class="mh">')?h:'<div class="mbody">'+h+'</div>';$('#mb').style.display='flex'}
 function closeM(){curD='';$('#mb').style.display='none'}
 $('#mb').onclick=e=>{if(e.target.id==='mb')closeM()};
-function nav(){const uc=S.projects.filter(p=>!p.archived&&p.status==='Upcoming').length;
-  $('#nav').innerHTML=[['work','Client Work'],['upc','Upcoming'+(uc?' ('+uc+')':'')],['cli','Clients'],['hist','History'],['mail','Quick Mail'],['camp','Campaign'],['set','Settings']].map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';draw()">${l}</button>`).join('')}
+const IC={work:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',upc:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',cli:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',hist:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',camp:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l2-5.2A8.4 8.4 0 1 1 21 11.5z"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>'};
+const ico=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
+function nav(){const uc=S.projects.filter(p=>!p.archived&&p.status==='Upcoming').length,u=uc?' ('+uc+')':'';
+  const T=[['work','Client Work','Work'],['upc','Upcoming'+u,'Upcoming'+u],['cli','Clients','Clients'],['hist','History','History'],['mail','Quick Mail','Mail'],['camp','Campaign','Campaign'],['set','Settings','Settings']],P=['work','upc','cli','mail'];
+  const B=(t,i)=>`<button style="order:${i}" class="${tab===t[0]?'on':''}" onclick="tab='${t[0]}';$('#nav').classList.remove('open');draw()"><span class="ic">${ico(t[0])}</span><span class="lf">${t[1]}</span><span class="ls">${t[2]}</span></button>`;
+  $('#nav').innerHTML=`<div class="nb"><span class="lg">CD</span><b>Client Desk</b></div><div class="nl">${T.map((t,i)=>P.includes(t[0])?B(t,i):'').join('')}<button style="order:99" class="mbtn ${P.includes(tab)?'':'on'}" onclick="event.stopPropagation();$('#nav').classList.toggle('open')"><span class="ic">${ico('more')}</span><span class="lf">More</span><span class="ls">More</span></button><div class="nx">${T.map((t,i)=>P.includes(t[0])?'':B(t,i)).join('')}</div></div>`;
+  const h=document.querySelector('header h1');if(h)h.textContent=T.find(t=>t[0]===tab)[1].replace(/ \(\d+\)$/,'')}
 function draw(){if(!PW)return;nav();({work:vWork,upc:vUp,cli:vCli,hist:vHist,mail:vMail,camp:vCamp,set:vSet})[tab]()}
 
 /* ---- Dates + extra fields ----
@@ -659,6 +711,7 @@ let ip;addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#in
 $('#inst').onclick=async()=>{if(ip){ip.prompt();await ip.userChoice;ip=null;$('#inst').style.display='none'}};
 const off=()=>{$('#off').style.display=navigator.onLine?'none':'block';setSy()};addEventListener('online',()=>{off();if(PW){flush();sync()}});addEventListener('offline',off);off();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&PW){flush();sync()}});
+document.addEventListener('click',e=>{const n=$('#nav');if(n&&n.classList.contains('open')&&!e.target.closest('.nx'))n.classList.remove('open')});
 setInterval(()=>{if(PW&&Q.length&&!busy)flush()},3000); // internet na ho to har 3 sec retry
 setInterval(()=>{if(!document.hidden)sync()},POLL_MS);
 setInterval(()=>{if(PW&&tab==='work')softDraw()},60000); // din badalte hi countdown update
