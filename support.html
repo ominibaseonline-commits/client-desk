@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ominibase Support</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#059669">
+<style>
+:root{--em:#059669;--deep:#064e3b;--mint:#ecfdf5;--line:#d1fae5;--ink:#0f172a;--mut:#475569;--bad:#b42318}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:#e8f8ef;color:var(--ink);font:16px/1.5 "DM Sans","Segoe UI",system-ui,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.wrap{max-width:560px;margin:0 auto;padding:18px 14px 40px}
+.brand{text-align:center;margin:8px 0 16px}
+.brand b{display:block;font-size:26px;color:var(--deep);letter-spacing:-.4px}
+.brand span{color:var(--mut);font-size:14px}
+.box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 6px 24px rgba(5,150,105,.08)}
+.box h1{font-size:19px;margin:0 0 2px;color:var(--deep)}
+.box p.s{margin:0 0 6px;color:var(--mut);font-size:14px}
+label{display:block;font-size:13px;font-weight:700;color:var(--deep);margin:14px 0 4px}
+label i{color:var(--bad);font-style:normal}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid #bfe9d6;border-radius:10px;background:#fff;color:var(--ink);font:inherit}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--em);border-color:var(--em)}
+textarea{min-height:120px;resize:vertical}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.imgs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.imgs div{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.imgs img{width:100%;height:100%;object-fit:cover;display:block}
+.imgs button{position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;border:0;background:#000a;color:#fff;font-size:14px;line-height:24px;padding:0;cursor:pointer}
+.btn{display:block;width:100%;margin-top:14px;padding:13px;border-radius:12px;border:1px solid var(--em);background:var(--em);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+.btn.sec{background:#fff;color:var(--em)}
+.btn:disabled{opacity:.55}
+.err{background:#fef3f2;color:var(--bad);border:1px solid #fecdca;border-radius:10px;padding:9px 12px;margin-top:12px;font-size:14px}
+.ok{text-align:center;padding:18px 4px}
+.ok .t{width:64px;height:64px;border-radius:50%;background:var(--mint);color:var(--em);font-size:34px;line-height:64px;margin:0 auto 10px}
+.ok h2{margin:0 0 6px;color:var(--deep)}
+.foot{text-align:center;color:var(--mut);font-size:13px;margin-top:16px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><b>Ominibase</b><span>support@ominibase.online</span></div>
+  <div class="box">
+    <form id="f" autocomplete="on" novalidate>
+      <h1>Support &amp; Query</h1>
+      <p class="s">Koi bhi problem ho, yahan likh dijiye. Hamari team 24 ghante ke andar reply karegi.</p>
+      <div id="err" class="err" hidden></div>
+      <label for="n">Name <i>*</i></label><input id="n" name="name" type="text" placeholder="Rahul Kumar" required>
+      <label for="p">Phone <i>*</i></label><input id="p" name="phone" type="tel" inputmode="tel" placeholder="1234567891" required maxlength="18">
+      <label for="e">Email <i>*</i></label><input id="e" name="email" type="email" placeholder="example@gmail.com" required>
+      <label for="s">Service <i>*</i></label>
+      <select id="s" name="service" required>
+        <option value="">Select a service</option>
+        <option>Attendance</option><option>Control Management System</option><option>Website</option><option>Custom Form</option><option>Other</option>
+      </select>
+      <label for="q">Problem <i>*</i></label><textarea id="q" name="problem" placeholder="Apni problem detail me likhiye..." required></textarea>
+      <input class="hp" id="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <label>Images <span style="font-weight:500;color:var(--mut)">(optional, max 4)</span> <span id="cnt" style="font-weight:500;color:var(--mut)">0/4</span></label>
+      <div id="imgs" class="imgs"></div>
+      <button type="button" class="btn sec" id="add">+ Add images</button>
+      <input id="file" type="file" accept="image/*" multiple hidden>
+      <button type="submit" class="btn" id="go">Submit Query</button>
+    </form>
+    <div id="done" class="ok" hidden>
+      <div class="t">✓</div><h2>Query Submitted!</h2>
+      <p class="s">Aapki query hamein mil gayi hai. Hamari team 24 ghante ke andar reply karegi.</p>
+      <button type="button" class="btn" id="again">Ek aur query bhejo</button>
+    </div>
+  </div>
+  <div class="foot">Ominibase · support@ominibase.online</div>
+</div>
+<script>
+/* Client Desk ka hi Apps Script. 'submitSupport' action bina password ke chalta hai, baaki sab password se locked hain. */
+const API='https://script.google.com/macros/s/AKfycbyYw03VeCYKDtNWiWTX_R4oz9bT5SiX3nVpXwZ6SkRouhTOFk1g-uNzZCxJ1Uld_NVTkw/exec';
+const $=s=>document.querySelector(s),MAX=4;
+let imgs=[],busy=0;
+// Client-specific link se naam/phone/email pehle se bhare aate hain: support.html?name=..&phone=..&email=..
+try{const u=new URLSearchParams(location.search);['name:n','phone:p','email:e'].forEach(x=>{const[k,id]=x.split(':'),v=u.get(k);if(v)$('#'+id).value=v.slice(0,120)});
+const sv=u.get('service');if(sv)[...$('#s').options].forEach(o=>{if(o.text===sv)$('#s').value=o.text})}catch{}
+$('#p').oninput=e=>e.target.value=e.target.value.replace(/[^\d+\s\-()]/g,'');
+function showErr(m){const e=$('#err');e.textContent=m;e.hidden=!m}
+function render(){
+  $('#cnt').textContent=imgs.length+'/'+MAX;$('#add').hidden=imgs.length>=MAX;
+  $('#imgs').innerHTML=imgs.map((x,i)=>`<div><img src="${x.url}" alt=""><button type="button" data-i="${i}" aria-label="Remove">×</button></div>`).join('')}
+$('#imgs').onclick=e=>{const b=e.target.closest('button[data-i]');if(!b)return;imgs.splice(+b.dataset.i,1);render()};
+$('#add').onclick=()=>$('#file').click();
+$('#file').onchange=async function(){
+  const L=[...this.files].filter(f=>/^image\//.test(f.type)).slice(0,MAX-imgs.length);this.value='';if(!L.length)return;
+  busy++;showErr('');
+  for(const f of L){try{imgs.push(await shrink(f))}catch{showErr('Ek image padh nahi paye. Dusri image try kijiye.')}}
+  busy--;render()};
+/* phone ki badi photo ko chhota karte hain taaki upload jaldi ho (max 1280px, JPEG) */
+function shrink(file){return new Promise((ok,no)=>{
+  const u=URL.createObjectURL(file),im=new Image();
+  im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');
+    c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+    const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);
+    const url=c.toDataURL('image/jpeg',.72);URL.revokeObjectURL(u);ok({url,data:url.split(',')[1]})};
+  im.onerror=()=>{URL.revokeObjectURL(u);no()};im.src=u})}
+$('#f').onsubmit=async e=>{
+  e.preventDefault();
+  if(busy)return showErr('Thoda ruko, images tayyar ho rahi hain.');
+  const d={action:'submitSupport',name:$('#n').value.trim(),phone:$('#p').value.trim(),email:$('#e').value.trim(),service:$('#s').value,problem:$('#q').value.trim(),website:$('#hp').value,
+    images:imgs.map((x,i)=>({name:'image'+(i+1)+'.jpg',mime:'image/jpeg',data:x.data}))};
+  if(!d.name||!d.phone||!d.email||!d.service||!d.problem)return showErr('Saare * wale fields bharna zaroori hai.');
+  if(d.phone.replace(/\D/g,'').length<10)return showErr('Phone number kam se kam 10 digit ka hona chahiye.');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email))return showErr('Sahi email likhiye.');
+  showErr('');const b=$('#go');b.disabled=true;b.textContent='Submitting...';
+  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),60000);
+  try{
+    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d),signal:ac.signal});
+    const j=await r.json();if(!j.ok)throw new Error(j.error||'Server error');
+    imgs=[];render();$('#f').reset();$('#f').hidden=true;$('#done').hidden=false;window.scrollTo(0,0)
+  }catch(x){showErr('Query abhi submit nahi ho payi. Internet check karke dobara try kijiye.')}
+  clearTimeout(t);b.disabled=false;b.textContent='Submit Query'};
+$('#again').onclick=()=>{$('#done').hidden=true;$('#f').hidden=false};
+render();
+</script>
+</body>
+</html>
