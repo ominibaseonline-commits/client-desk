@@ -199,7 +199,7 @@ h2.s-Upcoming+.grid .wc{background:#faeeaa;border-left:6px solid #d4a800}
 const DEFAULT_API='https://script.google.com/macros/s/AKfycbyYw03VeCYKDtNWiWTX_R4oz9bT5SiX3nVpXwZ6SkRouhTOFk1g-uNzZCxJ1Uld_NVTkw/exec';
 const SERVICES=['Control Management System','Attendance Management System','Custom Form','Website'];
 const MODES=['Cash','UPI','Bank','Cheque'];
-const PURPOSES=[['general','General update (manual)'],['started','Kaam start (naya client)'],['upcoming','Upcoming kaam'],['update_received','Request mili'],['update_completed','Update complete'],['payment','Payment reminder'],['payment_received','Payment mil gaya'],['work_completed','Kaam complete (completed work)'],['final_summary','Final thank-you (payment clear)']];
+const PURPOSES=[['support_reply','Support reply (query ka jawab)'],['general','General update (manual)'],['started','Kaam start (naya client)'],['upcoming','Upcoming kaam'],['update_received','Request mili'],['update_completed','Update complete'],['payment','Payment reminder'],['payment_received','Payment mil gaya'],['work_completed','Kaam complete (completed work)'],['final_summary','Final thank-you (payment clear)']];
 const PAYP=['payment','payment_received','final_summary'];
 const STAGES=['Upcoming','Running','Completed'];
 /* Quick Mail history ke filter */
@@ -627,7 +627,7 @@ const srvP=()=>C.purpose;
 function compose(o){C=Object.assign({clientId:'',projectId:'',purpose:'general',work:'',details:'',lang:'Hinglish',drafts:[],sel:0,updateId:''},o);if(o.includeMoney===undefined)C.includeMoney=PAYP.includes(C.purpose);cView()}
 function cView(){
   const ps=S.projects.filter(p=>p.clientId===C.clientId);
-  modal(`<h3>AI mail composer</h3><label>Client</label><select id="cc" onchange="cSync();C.projectId='';cView()"><option value="">Chuno…</option>${S.clients.map(c=>`<option value="${c.id}" ${c.id===C.clientId?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+  modal(`<h3>AI mail composer</h3><label>Client</label><select id="cc" onchange="cSync();C.projectId='';cView()"><option value="">Chuno…</option>${C.guest?`<option value="__g" ${!C.clientId?'selected':''}>${esc(C.guest.name)} — support query (naya)</option>`:''}${S.clients.map(c=>`<option value="${c.id}" ${c.id===C.clientId?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
   <label>Kaam (payment wali mail ke liye zaroori)</label><select id="cp2"><option value="">— koi nahi —</option>${ps.map(p=>`<option value="${p.id}" ${p.id===C.projectId?'selected':''}>${esc(p.service)} (${p.status})</option>`).join('')}</select>
   <div class="g2"><div><label>Purpose</label><select id="cu" onchange="cSync();C.includeMoney=PAYP.includes(C.purpose);cView()">${PURPOSES.map(([k,l])=>`<option value="${k}" ${k===C.purpose?'selected':''}>${l}</option>`).join('')}</select></div><div><label>Language</label><select id="cl">${['English','Hinglish','Hindi'].map(l=>`<option ${l===C.lang?'selected':''}>${l}</option>`).join('')}</select></div></div>
   <label>Title / kaam</label><input id="ct" value="${esc(C.work)}"><label>${C.purpose==='upcoming'?'Client ki requirement (AI isi se mail banayega)':'Description'}</label><textarea id="cd" ${C.purpose==='upcoming'?'placeholder="Client ko kya chahiye? Jaise: attendance form, 3 pages, logo lagana hai…"':''}>${esc(C.details)}</textarea>
@@ -636,19 +636,19 @@ function cView(){
   ${C.drafts.length?`<div class="tabs">${C.drafts.map((d,i)=>`<button class="${i===C.sel?'on':''}" onclick="pick(${i})">${esc(d.style||'Draft '+(i+1))}</button>`).join('')}</div>
   <label>Subject</label><input id="es" value="${esc(C.drafts[C.sel].subject)}"><label>Body</label><textarea id="eb" style="min-height:220px">${esc(C.drafts[C.sel].body)}</textarea>
   <div class="bar"><button class="b" onclick="review()">Review &amp; send</button></div>`:''}`)}
-function cSync(){C.clientId=$('#cc').value;C.projectId=$('#cp2')?.value||'';C.purpose=$('#cu').value;C.lang=$('#cl').value;C.work=$('#ct').value;C.details=$('#cd').value;C.includeMoney=C.purpose==='upcoming'?false:($('#cy')?$('#cy').checked:C.includeMoney)}
+function cSync(){C.clientId=$('#cc').value==='__g'?'':$('#cc').value;C.projectId=$('#cp2')?.value||'';C.purpose=$('#cu').value;C.lang=$('#cl').value;C.work=$('#ct').value;C.details=$('#cd').value;C.includeMoney=C.purpose==='upcoming'?false:($('#cy')?$('#cy').checked:C.includeMoney)}
 function keep(){if($('#es')){C.drafts[C.sel].subject=$('#es').value;C.drafts[C.sel].body=$('#eb').value}}
 function pick(i){keep();C.sel=i;cView()}
-async function gen(){cSync();if(!C.clientId)return toast('Pehle client chuno');if(!C.work.trim())return toast('Title likho');
+async function gen(){cSync();if(!C.clientId&&!C.guest)return toast('Pehle client chuno');if(!C.work.trim())return toast('Title likho');
   if(C.includeMoney&&!C.projectId)return toast('Payment block ke liye kaam chuno');
   if(!await ready())return;$('#gb').disabled=true;$('#gb').textContent='AI likh raha hai…';
-  const r=await run(()=>api('generateDrafts',{clientId:C.clientId,projectId:C.projectId,purpose:srvP(),work:C.work,details:C.details,language:C.lang,includeMoney:C.includeMoney,count:4,senderName:'Ominibase Team'}));
+  const r=await run(()=>api('generateDrafts',{clientId:C.clientId,guest:C.clientId?null:C.guest,projectId:C.projectId,purpose:srvP(),work:C.work,details:C.details,language:C.lang,includeMoney:C.includeMoney,count:4,senderName:'Ominibase Team'}));
   if(r){C.drafts=r.drafts;C.sel=0}cView()}
-function review(){keep();const c=cl(C.clientId),d=C.drafts[C.sel];
+function review(){keep();const c=C.clientId?cl(C.clientId):(C.guest||{email:''}),d=C.drafts[C.sel];
   modal(`<h3>Review &amp; send</h3><p><b>To:</b> ${esc(c.email)}</p><p><b>Subject:</b> ${esc(d.subject)}</p><div class="card pre">${esc(d.body)}</div>
   <div class="bar"><button class="b" id="sb" onclick="doSend()">Haan, bhejo</button><button class="b o" onclick="cView()">Wapas edit karo</button></div>`)}
 async function doSend(){const d=C.drafts[C.sel];$('#sb').disabled=true;if(!await ready()){$('#sb').disabled=false;return}
-  const r=await run(()=>api('sendMail',{clientId:C.clientId,projectId:C.projectId,purpose:srvP(),work:C.work,subject:d.subject,body:d.body,updateId:C.updateId}),'Mail bhej di');
+  const r=await run(()=>api('sendMail',{clientId:C.clientId,guest:C.clientId?null:C.guest,projectId:C.projectId,purpose:srvP(),work:C.work,subject:d.subject,body:d.body,updateId:C.updateId}),'Mail bhej di');
   if(r){closeM();if(tab==='mail')vMail()}else review()}
 
 /* ---- Quick Mail history: server ki EmailLog se aati hai, isliye har device par same dikhti hai ---- */
@@ -773,8 +773,7 @@ function supImgs(){document.querySelectorAll('#sl img[data-sid]').forEach(async 
 function supImg(id){let e=$('#lbx');if(!e){e=document.createElement('div');e.id='lbx';e.onclick=ev=>{if(ev.target===e||ev.target.dataset.x)e.style.display='none'};document.body.appendChild(e)}
   e.innerHTML=`<img src="${SIMG[id]||sThumb(id,1600)}" alt="Photo"><div><a href="https://drive.google.com/file/d/${id}/view" target="_blank" rel="noopener">Original kholo</a><button data-x="1">Band karo</button></div>`;e.style.display='flex'}
 function supReply(id){const x=SQ.find(q=>q.id===id);if(!x)return;const c=supClient(x);
-  if(c)return compose({clientId:c.id,purpose:'general',work:'Support: '+x.service,details:'Client ki query:\n'+x.problem});
-  location.href='mailto:'+x.email+'?subject='+encodeURIComponent('Re: Support query ['+x.service+']')}
+  compose({clientId:c?c.id:'',guest:c?null:{name:x.name,email:x.email},purpose:'support_reply',work:'Support: '+x.service,details:'Client ki query:\n'+x.problem})}
 async function supSet(id,st){const x=SQ.find(q=>q.id===id);if(!x)return;const o=x.status;x.status=st;try{localStorage.cmsq=JSON.stringify(SQ)}catch{}nav();vSup();
   if(x.local)return;                                                        // 90 din se purani: sirf local me hai, server par nahi
   const r=await run(()=>api('setSupportStatus',{id,status:st}));if(!r){x.status=o;nav();vSup()}}
