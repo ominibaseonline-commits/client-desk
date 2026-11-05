@@ -58,7 +58,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--mut);margin:10px 
 .wc[onclick]{cursor:pointer}
 .nums{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.nums span{font-size:12px;color:var(--mut)}.nums b{display:block;font-size:14px;color:var(--ink)}
 .nums b.du{color:var(--bad)}
-h2.s-Upcoming{border-left:4px solid var(--warn);padding-left:8px}h2.s-Running{border-left:4px solid var(--ac);padding-left:8px}h2.s-Completed{border-left:4px solid var(--ok);padding-left:8px}
+h2.s-Upcoming{border-left:4px solid var(--warn);padding-left:8px}h2.s-Running{border-left:4px solid var(--ac);padding-left:8px}h2.s-Completed{border-left:4px solid var(--ok);padding-left:8px}h2.s-Requests{border-left:4px solid var(--warn);padding-left:8px}
 nav button{padding:8px 12px}
 /* --- layout: header, nav aur content ek hi container me --- */
 header,nav,main{max-width:1100px;margin-left:auto;margin-right:auto}
@@ -317,13 +317,37 @@ function wcard(p){
   <div class="nums"><span>Days<b>${p.days||'-'}</b></span><span>Total<b>${money(p.total)}</b></span><span>Paid<b>${money(p.paid)}</b></span><span>Dues<b class="${p.dues>0?'du':''}">${money(p.dues)}</b></span><span>Agla<b>${p.dues>0?'Phase '+(phn(p)+1):(phn(p)?'✓ Done':'-')}</b></span></div><div>${acts(p)}</div></div>`}
 function vWork(){
   const live=S.projects.filter(p=>!p.archived),near=live.filter(p=>{const l=left(p)||rleft(p);return l&&l.n<=2});
+  const RL=S.projects.filter(p=>p.status==='Completed'&&p.pending>0);rqLoad(RL); // completed kaam ki pending requests
   const sec=(st,f)=>{const L=live.filter(p=>p.status===st);return `<h2 class="s-${st}">${st} <span class="cnt">${L.length}</span></h2><div class="grid">${L.map(f).join('')||'<p class="mut">Koi kaam nahi</p>'}</div>`};
   $('#v').innerHTML=`<div class="bar"><button class="b" onclick="wf('run')">+ Naya kaam</button></div>`+
   (near.length?`<div class="alertbar">⚠ Deadline paas hai: ${near.map(p=>{const n=(left(p)||rleft(p)).n;return `<b>${esc(p.clientName)}</b> (${n<0?-n+' din late':n?n+' din':'aaj'})`}).join(', ')}</div>`:'')+
-  sec('Running',wcard)+sec('Completed',wcard)}
+  sec('Running',wcard)+rsec(RL)+sec('Completed',wcard)}
 /* ---- Upcoming clients (alag tab) ---- */
 function vUp(){const L=S.projects.filter(p=>!p.archived&&p.status==='Upcoming');
   $('#v').innerHTML=`<div class="bar"><button class="b" onclick="wf('up')">+ Upcoming client</button></div><h2 class="s-Upcoming">Upcoming clients <span class="cnt">${L.length}</span></h2><div class="grid">${L.map(ucard).join('')||'<p class="mut">Koi upcoming client nahi</p>'}</div>`}
+/* ---- Client Work: completed kaam ki Pending requests (yaad rahe kiska update/change baaki hai) ----
+   Request list server se alag aati hai (getUpdates), isliye jin completed kaam me pending>0 hai unki list yahan background me load hoti hai. */
+const RQ={};
+function rqLoad(L){
+  if(!PW||busy||Q.length||!navigator.onLine)return;
+  L.forEach(p=>{const t=RQ[p.id];
+    if(isT(p.id)||(t&&t.n===p.pending&&(t.ok||Date.now()-t.t<15000)))return;
+    const v=ver,n=p.pending;RQ[p.id]={n,t:Date.now(),ok:false};
+    api('getUpdates',{projectId:p.id}).then(b=>{
+      if(v!==ver||busy||Q.length){delete RQ[p.id];return}
+      RQ[p.id]={n,t:Date.now(),ok:true};SV.up[p.id]=b.updates;persist();derive();if(tab==='work')softDraw()}).catch(()=>{})})}
+function openR(id){openD(id);DS.tab='r';dRender()}
+function rcard(p,r){const ch=CHR.exec(r.description||'');
+  return `<div class="wc" onclick="openR('${p.id}')"><div>${nm(p)}</div>
+  <div>${isT(r.id)?'<span class="chip warn">⏳ sync</span> ':''}${esc(p.service)} · <b>${esc(r.type)}</b> <span class="badge">Pending</span> ${ch?`<span class="chip warn">Charge ${ch[1]}</span>`:'<span class="chip">Free</span>'}</div>
+  <div class="pre" style="font-size:13px">${esc(String(r.description||'').replace(CHR,''))}</div>
+  <div class="mut">${rInfo(r)||'Deadline set nahi'}</div>
+  <div><button class="b" onclick="event.stopPropagation();doneUp('${r.id}','${p.id}')">Complete + mail</button></div></div>`}
+function rpend(p){const u=S.up[p.id];
+  if(!u)return `<div class="wc" onclick="openR('${p.id}')"><div>${nm(p)}</div><div>${esc(p.service)} <span class="badge">${p.pending} request</span></div><p class="mut">${navigator.onLine?'Request load ho rahi hai…':'Offline — request list abhi saved nahi hai'}</p></div>`;
+  return u.filter(r=>r.status==='Pending').map(r=>rcard(p,r)).join('')}
+function rsec(L){if(!L.length)return '';const c=L.reduce((a,p)=>a+(+p.pending||0),0);
+  return `<h2 class="s-Requests">Requests (Update / Change) <span class="cnt">${c}</span></h2><div class="grid">${L.map(rpend).join('')}</div>`}
 function setStage(id,status){enq({t:'prj~',id,patch:{status}});toast(status+' ho gaya')}
 function arch(id,archived){enq({t:'arch',id,archived});closeM();toast(archived?'History me bhej diya':'Wapas Completed me aa gaya')}
 function svEdit(id){const p=pr(id);if(p.status==='Upcoming')wf('up',id);else openD(id,true)}
@@ -489,7 +513,7 @@ function doneUp(uid,id){const u=(S.up[id]||[]).find(x=>x.id===uid)||{},p=pr(id),
 async function dFetch(id){
   if(!id||isT(id)||busy||Q.length||!PW||!navigator.onLine)return;const v=ver;
   try{const[a,b]=await Promise.all([api('getPayments',{projectId:id}),api('getUpdates',{projectId:id})]);
-    if(v!==ver||busy||Q.length)return;SV.pay[id]=a.payments;SV.up[id]=b.updates;persist();derive();if(curD===id&&!DS.edit)dRender()}catch(e){}}
+    if(v!==ver||busy||Q.length)return;SV.pay[id]=a.payments;SV.up[id]=b.updates;persist();derive();if(curD===id&&!DS.edit&&$('#dbody'))dRender()}catch(e){}}
 
 /* ---- Clients (add / edit / delete) ---- */
 let cq='',cs='all';
