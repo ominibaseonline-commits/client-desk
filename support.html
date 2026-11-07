@@ -44,7 +44,6 @@ textarea{min-height:120px;resize:vertical}
   <div class="box">
     <form id="f" autocomplete="on" novalidate>
       <h1>Support &amp; Query</h1>
-      <p class="s">Koi bhi problem ho, yahan likh dijiye. Hamari team 24 ghante ke andar reply karegi.</p>
       <div id="err" class="err" hidden></div>
       <label for="n">Name <i>*</i></label><input id="n" name="name" type="text" placeholder="Rahul Kumar" required>
       <label for="p">Phone <i>*</i></label><input id="p" name="phone" type="tel" inputmode="tel" placeholder="1234567891" required maxlength="18">
@@ -54,7 +53,7 @@ textarea{min-height:120px;resize:vertical}
         <option value="">Select a service</option>
         <option>Attendance</option><option>Control Management System</option><option>Website</option><option>Custom Form</option><option>Other</option>
       </select>
-      <label for="q">Problem <i>*</i></label><textarea id="q" name="problem" placeholder="Apni problem detail me likhiye..." required></textarea>
+      <label for="q">Problem <i>*</i></label><textarea id="q" name="problem" placeholder="Describe your problem in detail..." required></textarea>
       <input class="hp" id="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
       <label>Images <span style="font-weight:500;color:var(--mut)">(optional, max 4)</span> <span id="cnt" style="font-weight:500;color:var(--mut)">0/4</span></label>
       <div id="imgs" class="imgs"></div>
@@ -64,8 +63,7 @@ textarea{min-height:120px;resize:vertical}
     </form>
     <div id="done" class="ok" hidden>
       <div class="t">✓</div><h2>Query Submitted!</h2>
-      <p class="s">Aapki query hamein mil gayi hai. Hamari team 24 ghante ke andar reply karegi.</p>
-      <button type="button" class="btn" id="again">Ek aur query bhejo</button>
+      <button type="button" class="btn" id="again">Done</button>
     </div>
   </div>
   <div class="foot">Ominibase · support@ominibase.online</div>
@@ -88,7 +86,7 @@ $('#add').onclick=()=>$('#file').click();
 $('#file').onchange=async function(){
   const L=[...this.files].filter(f=>/^image\//.test(f.type)).slice(0,MAX-imgs.length);this.value='';if(!L.length)return;
   busy++;showErr('');
-  for(const f of L){try{imgs.push(await shrink(f))}catch{showErr('Ek image padh nahi paye. Dusri image try kijiye.')}}
+  for(const f of L){try{imgs.push(await shrink(f))}catch{showErr('Could not read one of the images. Please try a different image.')}}
   busy--;render()};
 /* phone ki badi photo ko chhota karte hain taaki upload jaldi ho (max 1280px, JPEG) */
 function shrink(file){return new Promise((ok,no)=>{
@@ -121,12 +119,12 @@ window.addEventListener('online',flush);
 window.addEventListener('beforeunload',e=>{if(pend.length){e.preventDefault();e.returnValue=''}});
 $('#f').onsubmit=e=>{
   e.preventDefault();
-  if(busy)return showErr('Thoda ruko, images tayyar ho rahi hain.');
+  if(busy)return showErr('Please wait, your images are still being prepared.');
   const d={action:'submitSupport',cid:Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:$('#n').value.trim(),phone:$('#p').value.trim(),email:$('#e').value.trim(),service:$('#s').value,problem:$('#q').value.trim(),website:$('#hp').value,
     images:imgs.map((x,i)=>({name:'image'+(i+1)+'.jpg',mime:'image/jpeg',data:x.data}))};
-  if(!d.name||!d.phone||!d.email||!d.service||!d.problem)return showErr('Saare * wale fields bharna zaroori hai.');
-  if(d.phone.replace(/\D/g,'').length<10)return showErr('Phone number kam se kam 10 digit ka hona chahiye.');
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email))return showErr('Sahi email likhiye.');
+  if(!d.name||!d.phone||!d.email||!d.service||!d.problem)return showErr('Please fill in all fields marked with *.');
+  if(d.phone.replace(/\D/g,'').length<10)return showErr('Phone number must be at least 10 digits.');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email))return showErr('Please enter a valid email address.');
   showErr('');
   pend.push(d);saveQ();                                   // pehle safe save
   imgs=[];render();$('#f').reset();$('#f').hidden=true;$('#done').hidden=false;window.scrollTo(0,0);   // turant success
