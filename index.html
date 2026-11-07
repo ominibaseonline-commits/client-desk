@@ -350,15 +350,34 @@ async function sync(force){
   catch(e){if(e.message==='Password galat hai')lockNow(true);else if(force)toast(e.message)}
   finally{syncing=false}}
 async function ready(){const t=()=>[C.clientId,C.projectId,C.updateId].some(isT);if(t()){toast('Sync ho raha hai…');await flush()}if(t()){toast('Abhi sync nahi hua — internet aane par mail bhejo');return false}return true}
-function modal(h){$('#m').innerHTML=h.startsWith('<div class="mh">')?h:'<div class="mbody">'+h+'</div>';$('#mb').style.display='flex'}
-function closeM(){curD='';$('#mb').style.display='none'}
+/* ---- Back button: har section/popup history me jata hai, back dabane par ulta (pichla) khulta hai ---- */
+let mPushed=false,mBack=false,morePushed=false;
+try{history.replaceState({tab:tab,m:0},'')}catch{}
+function modal(h){$('#m').innerHTML=h.startsWith('<div class="mh">')?h:'<div class="mbody">'+h+'</div>';$('#mb').style.display='flex';
+  if(mBack){mBack=false;mPushed=true}                       // abhi band hua tha aur turant naya khula: wahi history entry reuse
+  else if(!mPushed){mPushed=true;try{history.pushState({tab:tab,m:1},'')}catch{}}}
+function closeM(){curD='';$('#mb').style.display='none';
+  if(mPushed){mPushed=false;mBack=true;setTimeout(()=>{if(mBack){mBack=false;try{history.back()}catch{}}},0)}}
+function moreToggle(){const n=$('#nav');if(n.classList.contains('open'))closeMore();else{n.classList.add('open');try{history.pushState({tab:tab,m:0,more:1},'')}catch{}morePushed=true}}
+function closeMore(){$('#nav').classList.remove('open');if(morePushed){morePushed=false;try{history.back()}catch{}}}
+function setTab(t){
+  if(t===tab){closeMore();draw();return}
+  const wasMore=morePushed;$('#nav').classList.remove('open');morePushed=false;tab=t;
+  try{wasMore?history.replaceState({tab:t,m:0},''):history.pushState({tab:t,m:0},'')}catch{}
+  draw()}
+addEventListener('popstate',e=>{
+  const s=e.state||{tab:'work',m:0};
+  if(mPushed&&!s.m){mPushed=false;mBack=false;curD='';$('#mb').style.display='none'}
+  if(morePushed&&!s.more){morePushed=false;$('#nav').classList.remove('open')}
+  if(s.m&&!mPushed&&$('#mb').style.display!=='flex'){try{history.replaceState({tab:s.tab||tab,m:0},'')}catch{}}
+  if(s.tab&&s.tab!==tab){tab=s.tab;draw()}});
 $('#mb').onclick=e=>{if(e.target.id==='mb')closeM()};
 const IC={sup:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.9 4.9 4.3 4.3M14.8 14.8l4.3 4.3M14.8 9.2l4.3-4.3M4.9 19.1l4.3-4.3"/>',work:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',upc:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',cli:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',hist:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',camp:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l2-5.2A8.4 8.4 0 1 1 21 11.5z"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>'};
 const ico=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
 function nav(){const sn=supNew(),sb=sn?' ('+sn+')':'',uc=S.projects.filter(p=>!p.archived&&p.status==='Upcoming').length,u=uc?' ('+uc+')':'';
   const T=[['work','Client Work','Work'],['cli','Clients','Clients'],['mail','Quick Mail','Mail'],['sup','Support'+sb,'Support'+sb],['hist','History','History'],['upc','Upcoming'+u,'Upcoming'+u],['camp','Campaign','Campaign'],['set','Settings','Settings']],P=['work','cli','mail','sup'];
-  const B=(t,i)=>`<button style="order:${i}" class="${tab===t[0]?'on':''}" onclick="tab='${t[0]}';$('#nav').classList.remove('open');draw()"><span class="ic">${ico(t[0])}</span><span class="lf">${t[1]}</span><span class="ls">${t[2]}</span></button>`;
-  $('#nav').innerHTML=`<div class="nb"><span class="lg">CD</span><b>Client Desk</b></div><div class="nl">${T.map((t,i)=>P.includes(t[0])?B(t,i):'').join('')}<button style="order:99" class="mbtn ${P.includes(tab)?'':'on'}" onclick="event.stopPropagation();$('#nav').classList.toggle('open')"><span class="ic">${ico('more')}</span><span class="lf">More${uc?' •':''}</span><span class="ls">More${uc?' •':''}</span></button><div class="nx">${T.map((t,i)=>P.includes(t[0])?'':B(t,i)).join('')}</div></div>`;
+  const B=(t,i)=>`<button style="order:${i}" class="${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')"><span class="ic">${ico(t[0])}</span><span class="lf">${t[1]}</span><span class="ls">${t[2]}</span></button>`;
+  $('#nav').innerHTML=`<div class="nb"><span class="lg">CD</span><b>Client Desk</b></div><div class="nl">${T.map((t,i)=>P.includes(t[0])?B(t,i):'').join('')}<button style="order:99" class="mbtn ${P.includes(tab)?'':'on'}" onclick="event.stopPropagation();moreToggle()"><span class="ic">${ico('more')}</span><span class="lf">More${uc?' •':''}</span><span class="ls">More${uc?' •':''}</span></button><div class="nx">${T.map((t,i)=>P.includes(t[0])?'':B(t,i)).join('')}</div></div>`;
   const h=document.querySelector('header h1');if(h)h.textContent=T.find(t=>t[0]===tab)[1].replace(/ \(\d+\)$/,'')}
 function draw(){if(!PW)return;nav();({work:vWork,upc:vUp,cli:vCli,hist:vHist,mail:vMail,camp:vCamp,set:vSet,sup:vSup})[tab]()}
 
@@ -835,7 +854,7 @@ let ip;addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#in
 $('#inst').onclick=async()=>{if(ip){ip.prompt();await ip.userChoice;ip=null;$('#inst').style.display='none'}};
 const off=()=>{$('#off').style.display=navigator.onLine?'none':'block';setSy()};addEventListener('online',()=>{off();if(PW){flush();sync()}});addEventListener('offline',off);off();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&PW){flush();sync()}});
-document.addEventListener('click',e=>{const n=$('#nav');if(n&&n.classList.contains('open')&&!e.target.closest('.nx'))n.classList.remove('open')});
+document.addEventListener('click',e=>{const n=$('#nav');if(n&&n.classList.contains('open')&&!e.target.closest('.nx'))closeMore()});
 setInterval(()=>{if(PW&&Q.length&&!busy)flush()},3000); // internet na ho to har 3 sec retry
 setInterval(()=>{if(!document.hidden)sync()},POLL_MS);
 setInterval(()=>{if(PW&&tab==='work')softDraw()},60000); // din badalte hi countdown update
